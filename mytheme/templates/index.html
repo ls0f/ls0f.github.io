@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="content">
+{% block content_title %}
+{% endblock %}
+
+<ol id="post-list">
+{% for article in articles_page.object_list %}
+        <li class="nostyle">
+                <h2 class="entry-title"><a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                    <abbr class="published" title="{{ article.date }}"> {{ article.date.strftime('%Y-%m-%d') }} </abbr>
+                </h2> 
+        </li>
+{% endfor %}
+</ol><!-- /#posts-list -->
+{% include 'pagination.html' %}
+</section><!-- /#content -->
+{% endblock content %}
