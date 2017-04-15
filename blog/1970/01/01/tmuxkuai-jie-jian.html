@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+          <title></title>
+	    <link href='https://lovedboy.github.io/theme/css/notsobad.css' rel='stylesheet' type='text/css'>
+
+
+        <meta charset="utf-8" />
+        <link href="https://lovedboy.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title=" Full Atom Feed" />
+        <link href="https://lovedboy.github.io/feeds/misc.atom.xml" type="application/atom+xml" rel="alternate" title=" Categories Atom Feed" />
+
+
+
+
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://lovedboy.github.io/"> <strong></strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+            <li><a href="/">home</a></li>
+            <li><a href="/">links</a></li>
+            <li><a href="/">about</a></li>
+        </ul></nav><!-- /#menu -->
+<section id="content" class="body">
+  <header>
+    <h2 class="entry-title">
+      <a href="https://lovedboy.github.io/blog/1970/01/01/tmuxkuai-jie-jian.html" rel="bookmark"
+         title="Permalink to tmux快捷键">tmux快捷键</a>
+		 
+    <abbr class="published" title="1970-01-01T00:00:00+08:00">
+      1970-01-01 00:00
+    </abbr>
+		 </h2>
+ 
+  </header>
+    <div class="entry-content">
+    <h3>复制粘贴</h3>
+<ul>
+<li>[ 进入复制模式。</li>
+<li>] 粘贴</li>
+<li>进入复制模式后，可以用vi风格的快捷键进行移动（按上文的设置）。按下sapce就可以选择文本。回车键进行复制。然后再通过]进行粘贴。</li>
+</ul>
+<h3>session操作</h3>
+<ul>
+<li>d deattch当前session。输入tmux attach [-t sessionname]重新进入该session。</li>
+<li>tmux ls 列出所有session。退出当前session后，tmux attach -t 1即可切换到名字为1的session。</li>
+<li>$ 重命名当前session</li>
+<li><c-z> 挂起当前session</li>
+</ul>
+<h3>window操作</h3>
+<ul>
+<li>c 创建一个新的window</li>
+<li>b 重命名当前window</li>
+<li>&amp; 关闭当前window</li>
+<li>n 移动到下一个窗口</li>
+<li>p 移动到前一个窗口</li>
+<li>l 切换到上一个窗口</li>
+<li>w 列出所有窗口编号,并进行选择切换</li>
+<li>. 修改窗口编号，相当于排序。</li>
+</ul>
+<h3>pane操作</h3>
+<ul>
+<li>" 横向分割</li>
+<li>% 纵向分割</li>
+<li>方向键 在pane直接移动</li>
+<li>o 到下一个pane</li>
+<li>opt+方向键 调整pane大小</li>
+<li>{ / }左右pane交换</li>
+<li>空格 横竖切换</li>
+<li>q 显示pane的编号</li>
+<li>x 关闭当前pane</li>
+</ul>
+<p>我的.tmux.conf配置文件<a href="https://gist.github.com/lovedboy/6c7a07acf7778e38914d">https://gist.github.com/lovedboy/6c7a07acf7778e38914d</a>.</p>
+  </div><!-- /.entry-content -->
+</section>
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                By <a href="http://github.com/lovedboy" target="_blank">@lovedb0y</a>
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
+</body>
+</html>

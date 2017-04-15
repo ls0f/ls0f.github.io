@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+          <title></title>
+	    <link href='https://lovedboy.github.io/theme/css/notsobad.css' rel='stylesheet' type='text/css'>
+
+
+        <meta charset="utf-8" />
+        <link href="https://lovedboy.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title=" Full Atom Feed" />
+        <link href="https://lovedboy.github.io/feeds/misc.atom.xml" type="application/atom+xml" rel="alternate" title=" Categories Atom Feed" />
+
+
+
+
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://lovedboy.github.io/"> <strong></strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+            <li><a href="/">home</a></li>
+            <li><a href="/">links</a></li>
+            <li><a href="/">about</a></li>
+        </ul></nav><!-- /#menu -->
+<section id="content" class="body">
+  <header>
+    <h2 class="entry-title">
+      <a href="https://lovedboy.github.io/blog/1970/01/01/io-buffer.html" rel="bookmark"
+         title="Permalink to IO buffer">IO buffer</a>
+		 
+    <abbr class="published" title="1970-01-01T00:00:00+08:00">
+      1970-01-01 00:00
+    </abbr>
+		 </h2>
+ 
+  </header>
+    <div class="entry-content">
+    <p>同事：为什么代码里面的输出，在log文件里面没看到呢？</p>
+<p>我：你用的是print，不是用logging输出的日志吧。</p>
+<p>同事：是的。</p>
+<p>我：你改成用logging输出。</p>
+<p>看过《UNIX环境高级编程》的同学应该知道，标准I/O库是带缓存的I/O，目的是减少调用read和write的次数。</p>
+<p>典型的以空间换时间思维。：）   </p>
+<p>输入流、输出流默认都是有buffer，错误流默认是unbuffer。如果输出流是到终端，默认是line buffer。  </p>
+<p>无缓存IO操作数据流向路径：数据——内核缓存区——磁盘  <br>
+标准IO操作数据流向路径：数据——流缓存区——内核缓存区——磁盘</p>
+<p>通过下面的程序验证一下：</p>
+<p>运行命令是: <code>test.py | cat</code></p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s2">&quot;hello,world&quot;</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</td></tr></table>
+
+<p>如果我要在cat命令后面实时看到输出怎么办呢？用fflush清空buffer或者调用setvbuf来设置buffer大小。</p>
+<p>Python中你可以用sys.stdout.flush()来清空print的buffer。</p>
+<p>当然你可以用不带buffer的write函数。</p>
+<div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">){</span>
+            <span class="n">write</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;hello,world</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="s">&quot;hello,world</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">));</span>
+            <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>shell命令也经常会碰到buffer的问题。比如上面的C程序编译后，我用下面的命令运行：</p>
+<p><code>./a.out  |  grep -a 'h'  | grep 'h'</code></p>
+<p>是没有任何输出的(除非buffer被塞满了)。因为第一个grep的输出被buffer了。给第一个grep带上--line-buffered即可。</p>
+<p><code>./a.out  |  grep -a 'h' --line-buffered | grep 'h'</code></p>
+<p>关于IO buffer 更多资料可以参考这篇文章: <a href="http://blog.gtwang.org/linux/linux-standard-streams-buffer/">http://blog.gtwang.org/linux/linux-standard-streams-buffer/</a></p>
+<p>quoras上的回答：<a href="https://www.quora.com/In-C-what-does-buffering-I-O-or-buffered-I-O-mean">https://www.quora.com/In-C-what-does-buffering-I-O-or-buffered-I-O-mean</a></p>
+  </div><!-- /.entry-content -->
+</section>
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                By <a href="http://github.com/lovedboy" target="_blank">@lovedb0y</a>
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
+</body>
+</html>

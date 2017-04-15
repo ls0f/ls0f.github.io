@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+          <title></title>
+	    <link href='https://lovedboy.github.io/theme/css/notsobad.css' rel='stylesheet' type='text/css'>
+
+
+        <meta charset="utf-8" />
+        <link href="https://lovedboy.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title=" Full Atom Feed" />
+        <link href="https://lovedboy.github.io/feeds/misc.atom.xml" type="application/atom+xml" rel="alternate" title=" Categories Atom Feed" />
+
+
+
+
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://lovedboy.github.io/"> <strong></strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+            <li><a href="/">home</a></li>
+            <li><a href="/">links</a></li>
+            <li><a href="/">about</a></li>
+        </ul></nav><!-- /#menu -->
+<section id="content" class="body">
+  <header>
+    <h2 class="entry-title">
+      <a href="https://lovedboy.github.io/blog/1970/01/01/python2bian-ma-wen-ti.html" rel="bookmark"
+         title="Permalink to Python2编码问题">Python2编码问题</a>
+		 
+    <abbr class="published" title="1970-01-01T00:00:00+08:00">
+      1970-01-01 00:00
+    </abbr>
+		 </h2>
+ 
+  </header>
+    <div class="entry-content">
+    <h3>背景</h3>
+<p>做Python开发的同学对下面的错误一定很熟悉：</p>
+<div class="highlight"><pre><span></span>UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode characters in position 0-1: ordinal not in range(128)
+
+UnicodeDecodeError: &#39;ascii&#39; codec can&#39;t decode byte 0xe4 in position 0: ordinal not in range(128)
+</pre></div>
+
+
+<p>这也是Python2的一大黑点啊：）</p>
+<p>Python2中有两种字符串类型。分别是<code>str</code>和<code>unicode</code>。（Py3已经统一成unicode)</p>
+<p><code>str</code> 是由bytes组成的sequence，<code>unicode</code>是Unicode字符集组成的sequence。</p>
+<p>string里的有多种编码方式，比如最常用的ascii和utf-8。想解读string，必需知道string里的character是用哪种编码方式，然后才能进行。</p>
+<p>unicode有一个<code>.encode()</code>方法去产生byte strings。bytes strings 有对应的.decode()的方法去生成unicode strings.</p>
+<p>牢记一句话：<strong> ascii和utf-8是编解码方式，unicode是字符集。</strong></p>
+<p>为什么会出现unicode字符集呢？ascii码不够用。</p>
+<div class="highlight"><pre><span></span>In [8]: a=&quot;你好&quot; # Mac下面中文默认为utf-8编码
+
+In [9]: a
+Out[9]: &#39;\xe4\xbd\xa0\xe5\xa5\xbd&#39;
+
+In [10]: a.decode(&quot;utf-8&quot;)
+Out[10]: u&#39;\u4f60\u597d&#39;
+</pre></div>
+
+
+<h3>复现<code>UnicodeEncodeError encode</code>错误</h3>
+<div class="highlight"><pre><span></span>In [11]: b=u&quot;你好&quot;
+
+In [12]: b
+Out[12]: u&#39;\u4f60\u597d&#39;
+
+In [13]: &quot;abc{}&quot;.format(b)
+---------------------------------------------------------------------------
+UnicodeEncodeError                        Traceback (most recent call last)
+&lt;ipython-input-13-19e1bc96cb52&gt; in &lt;module&gt;()
+----&gt; 1 &quot;abc{}&quot;.format(b)
+
+UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode characters in position 0-1: ordinal not in range(128)
+</pre></div>
+
+
+<p>上面因为Python默认用ascii对unicode b字符串进行编码了。</p>
+<div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">14</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">15</span><span class="p">]:</span> <span class="n">sys</span><span class="o">.</span><span class="n">getdefaultencoding</span><span class="p">()</span> <span class="c1"># py2默认编码方式是ascii</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">15</span><span class="p">]:</span> <span class="s1">&#39;ascii&#39;</span>
+</pre></div>
+
+
+<p>避免encode错误，需要我们手动指定编码：</p>
+<div class="highlight"><pre><span></span>In [17]: &quot;abc{}&quot;.format(b.encode(&quot;utf-8&quot;))
+Out[17]: &#39;abc\xe4\xbd\xa0\xe5\xa5\xbd&#39;
+</pre></div>
+
+
+<h3>复现<code>UnicodeDecodeError decode</code>错误</h3>
+<div class="highlight"><pre><span></span>In [18]: u&quot;abc{}&quot;.format(a)
+---------------------------------------------------------------------------
+UnicodeDecodeError                        Traceback (most recent call last)
+&lt;ipython-input-18-8f4837b78059&gt; in &lt;module&gt;()
+----&gt; 1 u&quot;abc{}&quot;.format(a)
+
+UnicodeDecodeError: &#39;ascii&#39; codec can&#39;t decode byte 0xe4 in position 0: ordinal not in range(128)
+</pre></div>
+
+
+<p>这种情况也是需要我们手动指定解码方式:</p>
+<div class="highlight"><pre><span></span>In [19]: u&quot;abc{}&quot;.format(a.decode(&quot;utf-8&quot;))
+Out[19]: u&#39;abc\u4f60\u597d&#39;
+</pre></div>
+
+
+<p>使用 sys.setdefaultencoding("utf-8") 解决：</p>
+<div class="highlight"><pre><span></span>In [20]: reload(sys)
+&lt;module &#39;sys&#39; (built-in)&gt;
+
+In [21]: sys.setdefaultencoding(&quot;utf-8&quot;)
+
+In [22]: t1=&quot;中国&quot;
+
+In [23]: t1
+&#39;\xe4\xb8\xad\xe5\x9b\xbd&#39;
+
+In [24]: u&quot;abc{}&quot;.format(t1)
+u&#39;abc\u4e2d\u56fd&#39;
+
+In [25]: t2=u&quot;中国&quot;
+
+In [26]: &quot;abc{}&quot;.format(t2)
+&#39;abc\xe4\xb8\xad\xe5\x9b\xbd&#39;
+</pre></div>
+
+
+<h3>总结</h3>
+<p>1， UnicodeEncodeError错误，发生在Unicode转换成bytes流的时候出错，需要我们手动指定encode。 <br>
+2， UnicodeDecodeError错误，发生在bytes流转换成unicode时发生错误，需要我们手动指定decode  <br>
+3， ascii和utf-8是编解码方式，unicode是字符集，ascii是utf-8的子集。</p>
+<p>推荐:
+<a href="http://nedbatchelder.com/text/unipain.html">http://nedbatchelder.com/text/unipain.html</a></p>
+  </div><!-- /.entry-content -->
+</section>
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                By <a href="http://github.com/lovedboy" target="_blank">@lovedb0y</a>
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
+</body>
+</html>
