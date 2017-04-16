@@ -40,7 +40,7 @@
         </header><!-- /#banner -->
         <nav id="menu"><ul>
         {% for title, link in MENUITEMS %}
-            <li><a href="{{ link }}">{{ title }}</a></li>
+            <span><a href="{{ link }}">{{ title }}</a></span>
         {% endfor %}
         {% if DISPLAY_PAGES_ON_MENU %}
           {% for p in PAGES %}

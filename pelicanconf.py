@@ -8,8 +8,8 @@ SITEURL = ''
 
 MENUITEMS = [
         (u"home", "/"),
-        (u"links", "/"),
-        (u"about", "/"),
+        (u"links", "/links"),
+        (u"about", "/about"),
 ]
 
 PATH = 'content'
