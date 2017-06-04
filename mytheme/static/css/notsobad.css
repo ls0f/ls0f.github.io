@@ -9,9 +9,6 @@ blockquote {
     margin: 0;
     padding: 0;
 }
-span {
-	margin-right: 15px;
-}
 /*body {
     font-family: "Helvetica Neue", Helvetica, "Hiragino Sans GB", Arial, sans-serif;
     font-size: 13px;
@@ -178,4 +175,7 @@ header{text-align: center;}
 
 #menu a {
 	color: #607d8b;
+}
+#menu span {
+	margin-right: 15px;
 }
