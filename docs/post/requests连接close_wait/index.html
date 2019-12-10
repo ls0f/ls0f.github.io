@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.60.1" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/requests%E8%BF%9E%E6%8E%A5close_wait/">
+
+  <title>Requests连接CLOSE_WAIT - </title>
+  <meta property="og:title" content="Requests连接CLOSE_WAIT - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">Requests连接CLOSE_WAIT</h1>
+      <time class="post-date" datetime="2019-12-04 00:00:00 UTC">04 Dec 2019</time>
+    </header>
+
+    <p>线上Python后台服务出现了一些CLOSE_WAIT状态的TCP连接，看连接的dst ip，都是requests库发出的请求。</p>
+<p><img src="/images/close_wait.png" alt="img"></p>
+<p>首先要知道CLOSE_WAIT的状态的连接是因为对方已经关闭连接，我方还没有调用close关闭连接。
+由于使用了reqeusts 的seesion，会有连接池，requests这么完善的http库，不太可能出现连接泄露的问题。<br>
+于是大胆猜测：</p>
+<blockquote>
+<p>requests 不会主动去探测所有连接是否可用，当从连接池取出连接的时候，再去测试连接是否关闭，存在的CLOSE_WAIT的连接为正常现象，
+当下一次连接被重用的时候，会被检测已断开然后再主动关闭。</p>
+</blockquote>
+<p>看代码，requests的请求发送以及连接池其实是urllib3来提供的。</p>
+<p>首先看下如何从连接池获取可用连接的:
+<a href="https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L237">https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L237</a></p>
+<pre><code>    def _get_conn(self, timeout=None):
+        &quot;&quot;&quot;
+        Get a connection. Will return a pooled connection if one is available.
+        If no connections are available and :prop:`.block` is ``False``, then a
+        fresh connection is returned.
+        :param timeout:
+            Seconds to wait before giving up and raising
+            :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
+            :prop:`.block` is ``True``.
+        &quot;&quot;&quot;
+        conn = None
+        try:
+            conn = self.pool.get(block=self.block, timeout=timeout)
+
+        except AttributeError:  # self.pool is None
+            raise ClosedPoolError(self, &quot;Pool is closed.&quot;)
+
+        except queue.Empty:
+            if self.block:
+                raise EmptyPoolError(
+                    self,
+                    &quot;Pool reached maximum size and no more connections are allowed.&quot;,
+                )
+            pass  # Oh well, we'll create a new connection then
+
+        # If this is a persistent connection, check if it got disconnected
+        if conn and is_connection_dropped(conn):
+            log.debug(&quot;Resetting dropped connection: %s&quot;, self.host)
+            conn.close()
+            if getattr(conn, &quot;auto_open&quot;, 1) == 0:
+                # This is a proxied connection that has been mutated by
+                # httplib._tunnel() and cannot be reused (since it would
+                # attempt to bypass the proxy)
+                conn = None
+
+        return conn or self._new_conn()
+</code></pre><p>关键点在 <a href="https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L265">https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L265</a></p>
+<pre><code>        if conn and is_connection_dropped(conn):
+            log.debug(&quot;Resetting dropped connection: %s&quot;, self.host)
+            conn.close()
+            if getattr(conn, &quot;auto_open&quot;, 1) == 0:
+                # This is a proxied connection that has been mutated by
+                # httplib._tunnel() and cannot be reused (since it would
+                # attempt to bypass the proxy)
+                conn = None
+
+        return conn or self._new_conn()
+</code></pre><p>取出连接后，会去判断连接是否断掉，我们看下他如何判断的：
+<a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/connection.py#L7">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/connection.py#L7</a></p>
+<pre><code>def is_connection_dropped(conn):  # Platform-specific
+    &quot;&quot;&quot;
+    Returns True if the connection is dropped and should be closed.
+    :param conn:
+        :class:`httplib.HTTPConnection` object.
+    Note: For platforms like AppEngine, this will always return ``False`` to
+    let the platform handle connection recycling transparently for us.
+    &quot;&quot;&quot;
+    sock = getattr(conn, &quot;sock&quot;, False)
+    if sock is False:  # Platform-specific: AppEngine
+        return False
+    if sock is None:  # Connection already closed (such as by httplib).
+        return True
+    try:
+        # Returns True if readable, which here means it's been dropped
+        return wait_for_read(sock, timeout=0.0)
+    except NoWayToWaitForSocketError:  # Platform-specific: AppEngine
+        return False
+</code></pre><p>wait_for_socket 函数包装了很多层，追踪下面这个就好：
+<a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L127">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L127</a>
+我们以select_wait_for_socket为例：
+<a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L71">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L71</a></p>
+<pre><code>def select_wait_for_socket(sock, read=False, write=False, timeout=None):
+    if not read and not write:
+        raise RuntimeError(&quot;must specify at least one of read=True, write=True&quot;)
+    rcheck = []
+    wcheck = []
+    if read:
+        rcheck.append(sock)
+    if write:
+        wcheck.append(sock)
+    # When doing a non-blocking connect, most systems signal success by
+    # marking the socket writable. Windows, though, signals success by marked
+    # it as &quot;exceptional&quot;. We paper over the difference by checking the write
+    # sockets for both conditions. (The stdlib selectors module does the same
+    # thing.)
+    fn = partial(select.select, rcheck, wcheck, wcheck)
+    rready, wready, xready = _retry_on_intr(fn, timeout)
+    return bool(rready or wready or xready)
+</code></pre><p>以非阻塞方式将这个连接的fd传给select去检测是否可读，如果这个返回的可读fd列表非空（正常上一个请求的body读完后就不可读了，如果可读说明读到的是EOF），说明这个连接已经被对方关闭了。<br>
+至此，说明猜测是对的。</p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+
