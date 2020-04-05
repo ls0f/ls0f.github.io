@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.68.3" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/%E7%94%B5%E8%84%91%E7%9A%84%E7%BD%91%E7%BA%BF%E7%AA%81%E7%84%B6%E6%96%AD%E6%8E%89%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88/">
+
+  <title>电脑突然断网会发生什么 - </title>
+  <meta property="og:title" content="电脑突然断网会发生什么 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">电脑突然断网会发生什么</h1>
+      <time class="post-date" datetime="2020-04-05 00:00:00 UTC">05 Apr 2020</time>
+    </header>
+
+    <blockquote>
+<p>问题：电脑突然断网会发送什么？</p>
+</blockquote>
+<p>首先问题的前提是电脑和外部有进行连接，讨论已经建立的连接才有意义。<br>
+新建连接看断网时间长短决定握手成功与否。</p>
+<p>写个简单的发包程序，为了便于单步调试，直接用python：</p>
+<pre><code>import socket
+import sys
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                 
+s.connect((sys.argv[1] , int(sys.argv[2])))
+s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+while True:
+    line = s.recv(4096)
+    if line:
+        print line
+    else:
+        break
+s.close()
+</code></pre><p>直接pdb模式运行：<code>python -m pdb  scripts/test_socket.py xx 8000</code><br>
+当connect成功后，在目标机器上利用iptables模拟断网：</p>
+<pre><code>iptables -A INPUT -p tcp  --dport 8000 -j DROP
+</code></pre><p><code>sendall</code>函数将数据写入tcp协议栈缓冲区后，卡在recv函数，本地抓包：
+<img src="/images/connect%E5%90%8E%E6%96%AD%E6%8E%89%E8%BF%9E%E6%8E%A5.jpeg" alt="img">
+重传一定次数后，会发送RST给目标机器断掉连接，recv函数抛出timeout错误：</p>
+<pre><code>-&gt; s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+(Pdb) c
+Traceback (most recent call last):
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1314, in main
+    pdb._runscript(mainpyfile)
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1233, in _runscript
+    self.run(statement)
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&quot;, line 400, in run
+    exec cmd in globals, locals
+  File &quot;&lt;string&gt;&quot;, line 1, in &lt;module&gt;
+  File &quot;scripts/test_socket.py&quot;, line 8, in &lt;module&gt;
+    line = s.recv(4096)
+error: [Errno 60] Operation timed out
+</code></pre><p>如果是TCP协议栈写满后，会阻塞在sendall出，然后抛出Broken pipe:</p>
+<pre><code>(Pdb) c
+-&gt; s.sendall(&quot;*&quot;*406000)
+(Pdb) c
+Traceback (most recent call last):
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1314, in main
+    pdb._runscript(mainpyfile)
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1233, in _runscript
+    self.run(statement)
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&quot;, line 400, in run
+    exec cmd in globals, locals
+  File &quot;&lt;string&gt;&quot;, line 1, in &lt;module&gt;
+  File &quot;scripts/test_socket.py&quot;, line 6, in &lt;module&gt;
+    s.sendall(&quot;*&quot;*406000)
+  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/socket.py&quot;, line 228, in meth
+    return getattr(self._sock,name)(*args)
+error: [Errno 32] Broken pipe
+</code></pre><p>如果短暂断网后立马恢复，<code>sendall</code>函数执行前添加iptables，<code>sendall</code>后立马清掉规则（考验手速）。<br>
+抓包如下：
+<img src="/images/%E6%96%AD%E7%BD%91%E5%90%8E%E7%AB%8B%E9%A9%AC%E6%81%A2%E5%A4%8D.jpeg" alt="img">
+可以看到重传一定次数后，可恢复访问。如果时间短一般对业务没什么重大影响（网络抖动经常存在）。</p>
+<pre><code>-&gt; s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+(Pdb) c
+HTTP/1.0 404 File not found
+
+Server: SimpleHTTP/0.6 Python/2.7.5
+Date: Sun, 05 Apr 2020 15:35:53 GMT
+Content-Type: text/html
+Connection: close
+
+&lt;head&gt;
+&lt;title&gt;Error response&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;Error response&lt;/h1&gt;
+&lt;p&gt;Error code 404.
+&lt;p&gt;Message: File not found.
+&lt;p&gt;Error code explanation: 404 = Nothing matches the given URI.
+&lt;/body&gt;
+
+The program finished and will be restarted
+</code></pre><blockquote>
+<p>结论：<br>
+1、如果连接之间没有数据交换，断网没影响，tcp也识别不出来这种情况，需要心跳来检测这种情况<br>
+2、如果断网时有数据发送，tcp重试一定次数后会断掉连接，如果短暂断网，重传恢复，对业务基本没啥重要影响</p>
+</blockquote>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+

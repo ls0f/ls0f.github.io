@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.68.3" />
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,8 +39,8 @@
     <p>最近突发奇想：100W个文件存放1个目录和平均存放在10个目录，哪种方式访问更快。</p>
 <p>要想回答这个问题，首先得明白Linux是怎么定位文件的。Linux文件系统作为一种树状接口，定位文件是一层一层向下查找的。</p>
 <blockquote>
-<p>A Linux filename has the same format as all Unix  filenames have. It is a series of directory names separated by forward slashes (<code>/</code>) and ending in the file's name. One example filename would be <code>/home/rusling/.cshrc</code> where <code>/home</code> and <code>/rusling</code> are directory names and the file's name is <code>.cshrc</code>. Like all other Unix  systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters. To find the inode representing this file within an <code>EXT2</code> file system the system must parse the filename a directory at a time until we get to the file itself.</p>
-<p>The first inode we need is the inode for the root of the file system and we find its number in the file system's superblock. To read an EXT2 inode we must look for it in the inode table of the appropriate Block Group. If, for example, the root inode number is 42, then we need the 42nd inode from the inode table of Block Group 0. The root inode is for an EXT2 directory, in other words the mode of the root inode describes it as a directory and it's data blocks contain EXT2 directory entries.</p>
+<p>A Linux filename has the same format as all Unix  filenames have. It is a series of directory names separated by forward slashes (<code>/</code>) and ending in the file&rsquo;s name. One example filename would be <code>/home/rusling/.cshrc</code> where <code>/home</code> and <code>/rusling</code> are directory names and the file&rsquo;s name is <code>.cshrc</code>. Like all other Unix  systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters. To find the inode representing this file within an <code>EXT2</code> file system the system must parse the filename a directory at a time until we get to the file itself.</p>
+<p>The first inode we need is the inode for the root of the file system and we find its number in the file system&rsquo;s superblock. To read an EXT2 inode we must look for it in the inode table of the appropriate Block Group. If, for example, the root inode number is 42, then we need the 42nd inode from the inode table of Block Group 0. The root inode is for an EXT2 directory, in other words the mode of the root inode describes it as a directory and it&rsquo;s data blocks contain EXT2 directory entries.</p>
 <p><code>home</code> is just one of the many directory entries and this directory entry gives us the number of the inode describing the <code>/home</code> directory. We have to read this directory (by first reading its inode and then reading the directory entries from the data blocks described by its inode) to find the <code>rusling</code> entry which gives us the number of the inode describing the <code>/home/rusling</code> directory. Finally we read the directory entries pointed at by the inode describing the <code>/home/rusling</code> directory to find the inode number of the <code>.cshrc</code> file and from this we get the data blocks containing the information in the file.</p>
 </blockquote>
 <p><img src="http://www.porcupine.org/forensics/forensic-discovery/figure3.2.gif" alt=" Simplified structure of the UNIX file system."></p>
