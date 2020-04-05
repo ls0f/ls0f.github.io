@@ -6,10 +6,26 @@
     <description>Recent content in Posts on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 05 Dec 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 01 Apr 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>请求双发提高服务可用性</title>
+      <link>https://ls0f.github.io/post/%E8%AF%B7%E6%B1%82%E5%8F%8C%E5%8F%91%E6%8F%90%E9%AB%98%E6%9C%8D%E5%8A%A1%E5%8F%AF%E7%94%A8%E6%80%A7/</link>
+      <pubDate>Wed, 01 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/%E8%AF%B7%E6%B1%82%E5%8F%8C%E5%8F%91%E6%8F%90%E9%AB%98%E6%9C%8D%E5%8A%A1%E5%8F%AF%E7%94%A8%E6%80%A7/</guid>
+      <description>背景 为公司内部同学提供了maven聚合代理仓库，这个聚合仓库代理了外网上十个仓库，外网网络链路的不可靠加上外网仓库的稳定性不确定，代理仓库请求容易出现请求失败，虽然失败率不高（十万分之三），但maven构建时请求的敏感性，任何一次请求失败都会导致整个构建流程失败，这里还是有可以优化的点。刚好做容灾搭建了一套备份服务，可以用请求双发来做单服务的容错。
+实现 请求双发在nginx层是没法做到的，由于我们有在用Go的httputil.ReverseProxy在做业务proxy，这上面是一个实现口。
+RevserseProxy的源码，发现是可以自定义Transport的。
+type ReverseProxy struct { ... // The transport used to perform proxy requests. // If nil, http.DefaultTransport is used. Transport http.RoundTripper ... Transport是一个interface，返回一个http response。
+type RoundTripper interface { RoundTrip(*Request) (*Response, error) } 所以只要实现一个RoundTripper，并发请求主备机器，返回最快的response就行。
+这里定义一个MultiRoundTripper，这里当然不会再去从头实现一个发送http请求的的transport，用默认的http.DefaultTransport发送http请求就行，所以还是定义把这个interface暴露出去。
+type MultiRoundTripper struct { RT http.RoundTripper #发送http请求的transport BackupHost map[string]string #需要双发的主备机器 SupportMethod map[string]struct{} #支持双发的方法 } 完整实现代码：
+type wrapResponse struct { res *http.Response err error } func NewMultiRoundTripper(rt http.RoundTripper, BackupHost map[string]string, SupportMethod map[string]struct{}) http.</description>
+    </item>
     
     <item>
       <title>Go HTTP Response Body 为什么需要关闭</title>
