@@ -37,13 +37,14 @@ iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags ACK ACK -j DROP
 
 如果接下来的第一个数据包也丢了会怎么样呢？，我用raw socket去发包模拟验证了下，代码放在[这里](https://gist.github.com/ls0f/941912ca0cf6e756eeb4524e497a7095)
 
-注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包
+注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包：
 ```
 iptables -F
 iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP
 ```
 
 ![img](/images/out_of_order.jpeg)
+PS:*图片标注有问题，其实是先发了包2（模拟包1丢了），再发的包1，wireshark可以看出包的顺序有问题*
 
 即使接下来第一个包丢了也没关系，只要后面的包带上正确的ACK就能握手成功，能够正确重传丢失的包，请求都可以正常返回。当然如果第一个ACK错误了，肯定会收到服务端的RST。
 
