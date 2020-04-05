@@ -10,10 +10,10 @@ html {
   font-size: 1rem; }
   @media screen and (min-width: 800px) {
     html {
-      font-size: 1.125rem; } }
+      font-size: 0.9rem; } }
 
 body {
-  line-height: 1.6; }
+  line-height: 1.2; }
 
 html,
 body {
@@ -111,7 +111,7 @@ section {
   margin-bottom: 1rem; }
 
 h1 {
-  font-size: 1.875rem; }
+  font-size: 1.5rem; }
 
 h2,
 h3,
@@ -121,23 +121,23 @@ h6 {
   margin: 0 0 .5rem; }
 
 h2 {
-  font-size: 2rem; }
-
-h3 {
-  font-size: 1.75rem; }
-
-h4 {
   font-size: 1.5rem; }
 
+h3 {
+  font-size: 1.2rem; }
+
+h4 {
+  font-size: 1.0rem; }
+
 h5 {
-  font-size: 1.25rem; }
+  font-size: 0.8rem; }
 
 h6 {
-  font-size: 1rem; }
+  font-size: 0.6rem; }
 
 .container {
   width: 100%;
-  max-width: 38rem;
+  max-width: 50rem;
   margin: 0 auto;
   padding: .5rem; }
   @media screen and (min-width: 800px) {
