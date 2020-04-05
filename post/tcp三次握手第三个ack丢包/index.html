@@ -65,6 +65,8 @@ iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP
 </code></pre><p><img src="/images/out_of_order.jpeg" alt="img"></p>
 <p>即使接下来第一个包丢了也没关系，只要后面的包带上正确的ACK就能握手成功，能够正确重传丢失的包，请求都可以正常返回。当然如果第一个ACK错误了，肯定会收到服务端的RST。</p>
 <p><img src="/images/wrong_ack.jpeg" alt="img"></p>
+<p>结论：</p>
+<p>TCP设计的健壮性，第三个ACK丢包后也不影响后续连接的使用。</p>
 
 
   </article>
