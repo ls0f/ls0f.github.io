@@ -49,5 +49,8 @@ iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP
 
 ![img](/images/wrong_ack.jpeg)
 
+结论：
+
+TCP设计的健壮性，第三个ACK丢包后也不影响后续连接的使用。
 
 
