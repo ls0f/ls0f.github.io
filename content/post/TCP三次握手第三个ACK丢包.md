@@ -5,7 +5,7 @@ title = "TCP握手第三个ACK丢包会怎么样"
 
 +++
 
-问题：TCP三次握手过程中，第三个ACK网络丢包了会怎么样？
+问题：  TCP三次握手过程中，第三个ACK网络丢包了会怎么样？
 
 首先看一下三次握手的流程：
 
@@ -35,7 +35,7 @@ iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags ACK ACK -j DROP
 ![img](/images/ack_lost_with_curl.jpeg)
 图片可以看到，握手的第三个ACK包虽然丢了，但是接下来的一个数据包设置了ACK位，服务端还是能握手成功，并且正常响应curl请求。
 
-如果接下来的第一个数据包也丢了会怎么样呢？，我用raw socket去发包模拟验证了下，代码放在[这里](https://gist.github.com/ls0f/941912ca0cf6e756eeb4524e497a7095)
+如果接下来的第一个数据包也丢了会怎么样呢？我用raw socket去发包模拟验证了下，代码放在[这里](https://gist.github.com/ls0f/941912ca0cf6e756eeb4524e497a7095)
 
 注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包：
 ```
@@ -50,8 +50,6 @@ PS:*图片标注有问题，其实是先发了包2（模拟包1丢了），再�
 
 ![img](/images/wrong_ack.jpeg)
 
-结论：
-
-TCP设计的健壮性，第三个ACK丢包后也不影响后续连接的使用。
+结论：TCP设计的健壮性，第三个ACK丢包后也不影响后续连接的使用。
 
 
