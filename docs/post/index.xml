@@ -17,7 +17,7 @@
       <pubDate>Sun, 05 Apr 2020 00:00:00 +0000</pubDate>
       
       <guid>https://ls0f.github.io/post/tcp%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E7%AC%AC%E4%B8%89%E4%B8%AAack%E4%B8%A2%E5%8C%85/</guid>
-      <description>问题： TCP三次握手过程中，第三个ACK网络丢包了会怎么样？
+      <description>问题：TCP三次握手过程中，第三个ACK网络丢包了会怎么样？
 首先看一下三次握手的流程：
 客户端在发送第三个ACK后，已经进入了establish状态，如果这个ACK在网络中丢失了，此时服务端还处于syn-received状态。
 分两种情况：
@@ -28,6 +28,21 @@
 如果接下来的第一个数据包也丢了会怎么样呢？我用raw socket去发包模拟验证了下，代码放在这里
 注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包：
 iptables -F iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP PS:图片标注有问题，其实是先发了包2（模拟包1丢了），再发的包1，wireshark可以看出包的顺序有问题</description>
+    </item>
+    
+    <item>
+      <title>电脑突然断网会发送什么</title>
+      <link>https://ls0f.github.io/post/%E7%94%B5%E8%84%91%E7%9A%84%E7%BD%91%E7%BA%BF%E7%AA%81%E7%84%B6%E6%96%AD%E6%8E%89%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88/</link>
+      <pubDate>Sun, 05 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/%E7%94%B5%E8%84%91%E7%9A%84%E7%BD%91%E7%BA%BF%E7%AA%81%E7%84%B6%E6%96%AD%E6%8E%89%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88/</guid>
+      <description>问题：电脑突然断网会发送什么？
+首先问题的前提是电脑和外部有进行连接，讨论已经建立的连接才有意义。新建连接肯定三次握手都会失败。
+写个简单的发包程序，为了便于单步调试，直接用python：
+import socket import sys s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.sendall(&amp;quot;GET /404 HTTP/1.0\r\n\r\n&amp;quot;) while True: line = s.recv(4096) if line: print line else: break s.close() 直接pdb模式运行：python -m pdb scripts/test_socket.py xx 8000
+当connect成功后，在目标机器上利用iptables模拟断网：
+iptables -A INPUT -p tcp --dport 8000 -j DROP sendall函数将数据写入tcp协议栈缓冲区后，卡在recv函数，本地抓包： 重传一定次数后，会发送RST给目标机器断掉连接，recv函数抛出timeout错误：
+-&amp;gt; s.sendall(&amp;quot;GET /404 HTTP/1.0\r\n\r\n&amp;quot;) (Pdb) c Traceback (most recent call last): File &amp;quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&amp;quot;, line 1314, in main pdb._runscript(mainpyfile) File &amp;quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&amp;quot;, line 1233, in _runscript self.</description>
     </item>
     
     <item>
@@ -145,7 +160,7 @@ import signal import os import time def handler(signum, frame): print &amp;#39;S
       <guid>https://ls0f.github.io/post/100w%E4%B8%AA%E6%96%87%E4%BB%B6%E5%AD%98%E6%94%BE1%E4%B8%AA%E7%9B%AE%E5%BD%95%E5%92%8C%E5%AD%98%E6%94%BE10%E4%B8%AA%E7%9B%AE%E5%BD%95/</guid>
       <description>最近突发奇想：100W个文件存放1个目录和平均存放在10个目录，哪种方式访问更快。
 要想回答这个问题，首先得明白Linux是怎么定位文件的。Linux文件系统作为一种树状接口，定位文件是一层一层向下查找的。
- A Linux filename has the same format as all Unix filenames have. It is a series of directory names separated by forward slashes (/) and ending in the file&#39;s name. One example filename would be /home/rusling/.cshrc where /home and /rusling are directory names and the file&#39;s name is .cshrc. Like all other Unix systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters.</description>
+ A Linux filename has the same format as all Unix filenames have. It is a series of directory names separated by forward slashes (/) and ending in the file&amp;rsquo;s name. One example filename would be /home/rusling/.cshrc where /home and /rusling are directory names and the file&amp;rsquo;s name is .cshrc. Like all other Unix systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters.</description>
     </item>
     
   </channel>
