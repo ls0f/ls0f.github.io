@@ -55,7 +55,8 @@ while True:
     else:
         break
 s.close()
-</code></pre><p>直接pdb模式运行：<code>python -m pdb  scripts/test_socket.py xx 8000</code><br>
+</code></pre><p>直接pdb模式运行：<code>python -m pdb  scripts/test_socket.py xx 8000</code>。<br>
+目标机器运行<code>python -m SimpleHTTPServer</code>监听8000端口。<br>
 当connect成功后，在目标机器上利用iptables模拟断网：</p>
 <pre><code>iptables -A INPUT -p tcp  --dport 8000 -j DROP
 </code></pre><p><code>sendall</code>函数将数据写入tcp协议栈缓冲区后，卡在recv函数，本地抓包：
