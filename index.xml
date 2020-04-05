@@ -6,10 +6,29 @@
     <description>Recent content on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 01 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 05 Apr 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>TCP握手第三个ACK丢包会怎么样</title>
+      <link>https://ls0f.github.io/post/tcp%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E7%AC%AC%E4%B8%89%E4%B8%AAack%E4%B8%A2%E5%8C%85/</link>
+      <pubDate>Sun, 05 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/tcp%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E7%AC%AC%E4%B8%89%E4%B8%AAack%E4%B8%A2%E5%8C%85/</guid>
+      <description>问题：TCP三次握手过程中，第三个ACK网络丢包了会怎么样？
+首先看一下三次握手的流程：
+客户端在发送第三个ACK后，已经进入了establish状态，如果这个ACK在网络中丢失了，此时服务端还处于syn-received状态。
+分两种情况：
+ 客户端连接建立后，不发送数据 客户端连接建立后，立马发送数据  为了模拟第三个ACK丢失的情况，我在本地运行了python -m SimpleHTTPServer监听8000端口。
+利用iptables来模拟ACK丢包
+# 清掉iptables规则 iptables -F # PSH包需要放行 iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags PSH PSH -j ACCEPT iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags ACK ACK -j DROP 用telnet来连接服务端，但是不发送数据： 抓包可以看到，ACK丢失触发了服务端的SYN/ACK重传。（为了防止SYN flood攻击，有些网站关闭了SYN/ACK重传，比如baidu）
+用curl来请求服务器： 图片可以看到，握手的第三个ACK包虽然丢了，但是接下来的一个数据包设置了ACK位，服务端还是能握手成功，并且正常响应curl请求。
+如果接下来的第一个数据包也丢了会怎么样呢？，我用raw socket去发包模拟验证了下，代码放在这里
+注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包
+iptables -F iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP 即使接下来第一个包丢了也没关系，只要后面的包带上正确的ACK就能握手成功，能够正确重传丢失的包，请求都可以正常返回。当然如果第一个ACK错误了，肯定会收到服务端的RST。</description>
+    </item>
     
     <item>
       <title>请求双发提高服务可用性</title>
