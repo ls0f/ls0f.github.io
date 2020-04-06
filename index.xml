@@ -6,10 +6,23 @@
     <description>Recent content on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 05 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 06 Apr 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>TCP Buffer</title>
+      <link>https://ls0f.github.io/post/tcp-buffer/</link>
+      <pubDate>Mon, 06 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/tcp-buffer/</guid>
+      <description>看tcp socket buffer size：
+ /proc/sys/net/ipv4/tcp_rmem (for read) /proc/sys/net/ipv4/tcp_wmem (for write)  [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_rmem 4096 87380 6291456 [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_wmem 4096 16384 4194304 三个数字分别表示最小、默认、最大的内存限制。
+简单验证下tcp write buffer到底有多大。
+客户端：
+import socket import sys import os import errno import time s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.setblocking(0) buf = &amp;quot;*&amp;quot; * 1024 cnt = 0 while True: try: n = s.send(buf) cnt += n sys.stdout.write(&amp;quot;\r send %s bytes, total:%s&amp;quot; % (n, cnt)) sys.</description>
+    </item>
     
     <item>
       <title>TCP握手第三个ACK丢包会怎么样</title>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.68.3" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/tcp-buffer/">
+
+  <title>TCP Buffer - </title>
+  <meta property="og:title" content="TCP Buffer - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">TCP Buffer</h1>
+      <time class="post-date" datetime="2020-04-06 00:00:00 UTC">06 Apr 2020</time>
+    </header>
+
+    <p>看tcp socket buffer size：</p>
+<ul>
+<li>/proc/sys/net/ipv4/tcp_rmem (for read)</li>
+<li>/proc/sys/net/ipv4/tcp_wmem (for write)</li>
+</ul>
+<pre><code>[root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_rmem
+4096    87380   6291456
+[root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_wmem
+4096    16384   4194304       
+</code></pre><p>三个数字分别表示最小、默认、最大的内存限制。</p>
+<p>简单验证下tcp write buffer到底有多大。<br>
+客户端：</p>
+<pre><code>import socket
+import sys
+import os
+import errno
+import time
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                 
+s.connect((sys.argv[1] , int(sys.argv[2])))
+s.setblocking(0)
+buf = &quot;*&quot; * 1024
+cnt = 0
+while True:
+    try:
+        n = s.send(buf)
+        cnt += n
+        sys.stdout.write(&quot;\r send %s bytes, total:%s&quot; % (n, cnt))
+        sys.stdout.flush()
+        time.sleep(0.2)
+    except IOError as err:
+        if err.errno == errno.EWOULDBLOCK:
+            print
+            print(&quot;write buffer is full, send %s bytes total&quot; % cnt)
+            a = raw_input(&quot;enter q to exit:&quot;)
+            if a == 'q':
+                break
+    except:
+        raise
+s.close()
+</code></pre><p>服务端：</p>
+<pre><code>import socket
+import sys
+
+HOST = sys.argv[1]  
+PORT = int(sys.argv[2])
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((HOST, PORT))
+s.listen(128)
+while 1:
+    conn, addr = s.accept()
+    print('Connected by', addr)
+    while True:
+        data = conn.recv(1024)
+        if not data:
+            conn.close()
+            break
+        print data 
+</code></pre><p>为了让客户端buffer写满，服务端需要在s.accept()后打上断点，不读客户端数据。</p>
+<p>服务端可以用<code>python -m pdb test_server.py 127.0.0.1 1234</code>运行。<br>
+客户端<code>python test_client.py 127.0.0.1 1234</code> 。</p>
+<p>客户端观察到：</p>
+<pre><code>write buffer is full, send 696704 bytes total
+</code></pre><p>说明发送了696704字节后数据，调用write开始阻塞，buffer写满了。</p>
+<p>wireshark抓包：</p>
+<p><img src="/images/tcp_buffer_last_ack.jpeg" alt="img">
+服务端最后的ACK是322561，说明客户端的写buffer里面至少还有696704-322560=374144字节的数据，同理也可以知道服务端的读buffer至少有322560个字节已经ACK过的数据。</p>
+<p>参考：</p>
+<ul>
+<li><a href="https://stackoverflow.com/questions/7865069/how-to-find-the-socket-buffer-size-of-linux">how-to-find-the-socket-buffer-size-of-linux</a></li>
+</ul>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+
