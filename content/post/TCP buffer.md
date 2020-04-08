@@ -1,3 +1,4 @@
+
 +++
 date = "2020-04-06"
 draft = false
@@ -86,5 +87,12 @@ wireshark抓包：
 ![img](/images/tcp_buffer_last_ack.jpeg)
 服务端最后的ACK是322561，说明客户端的写buffer里面至少还有696704-322560=374144字节的数据，同理也可以知道服务端的读buffer至少有322560个字节已经ACK过的数据。
 
+可以用setsockopt函数去设置每个连接的读写缓冲(SO_RCVBUF and SO_SNDBUF)。
+
+但我测试发现SO_RCVBUF的大小并不严格等于TCP ACK过的数据大小(Win=0且未去读socket数据)，只能说数量级比较接近。
+![img](/images/rcv_buffer_ack.jpeg)
+图片中当win=0时ACK为11761，但是我设置的RCVBUF为8192，实际缓存数据是要稍大于RCVBUF的。
+
 参考：  
 * [how-to-find-the-socket-buffer-size-of-linux](https://stackoverflow.com/questions/7865069/how-to-find-the-socket-buffer-size-of-linux)
+* [man 7 tcp](http://man7.org/linux/man-pages/man7/tcp.7.html)
