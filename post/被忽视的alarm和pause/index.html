@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.68.3" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/%E8%A2%AB%E5%BF%BD%E8%A7%86%E7%9A%84alarm%E5%92%8Cpause/">
+
+  <title>被忽视的Alarm和Pause - </title>
+  <meta property="og:title" content="被忽视的Alarm和Pause - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">被忽视的Alarm和Pause</h1>
+      <time class="post-date" datetime="2020-08-01 00:00:00 UTC">01 Aug 2020</time>
+    </header>
+
+    <blockquote>
+<p>在软件工具和生态越来越复杂的今天，我们往往容易忽视一些内核提供的非常有用的函数。<br>
+Alarm和Pause就是其中之列。</p>
+</blockquote>
+<h2 id="alarm">Alarm</h2>
+<p>有时候我们需要给程序加运行时间控制，很多人会用ps来检测或者用timeout命令来运行。<br>
+Alarm函数也适合干这个事情。</p>
+<pre><code>import signal
+
+signal.alarm(1)
+
+while 1:
+    pass
+</code></pre><p>上面调用alarm(1)，表示要内核会在1s后给程序发SIGALARM信号，此信号的默认行为是终止程序，当然<br>
+我们可以捕获信号做更多事情。alram精度是秒，但已经满足我们大部分需求了。</p>
+<h2 id="pause">Pause</h2>
+<p>有时写程序调试时，希望运行完后不要退出，保留现场，这个时候可以用pause，使程序进入sleep状态。
+当调试完毕的时候，再crt+c退出。</p>
+<pre><code>import signal
+# debug here
+signal.pause()
+</code></pre><h2 id="links">Links</h2>
+<p><a href="https://man7.org/linux/man-pages/man2/alarm.2.html">Alarm</a><br>
+<a href="https://man7.org/linux/man-pages/man2/pause.2.html">Pause</a></p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+
