@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.68.3" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/%E4%BB%8Enginx%E5%A4%A7%E6%96%87%E4%BB%B6%E4%B8%8B%E8%BD%BD%E4%B8%8D%E5%AE%8C%E5%85%A8/">
+
+  <title>从Nginx下载大文件不完整 - </title>
+  <meta property="og:title" content="从Nginx下载大文件不完整 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">从Nginx下载大文件不完整</h1>
+      <time class="post-date" datetime="2020-04-10 00:00:00 UTC">10 Apr 2020</time>
+    </header>
+
+    <h1 id="背景">背景</h1>
+<p>业务反馈下载一个7GB左右的大文件，总是下载一个到1GB左右就断掉了。</p>
+<h1 id="分析">分析</h1>
+<p>在机器上重试，发现能够稳定重现。</p>
+<p><img src="/images/%E4%B8%8B%E8%BD%BD1GB%E5%A4%B1%E8%B4%A5.jpeg" alt="img"></p>
+<p>用curl去下载：</p>
+<p><img src="/images/curl%E4%B8%8B%E8%BD%BD%E5%A4%B1%E8%B4%A5%E6%8F%90%E7%A4%BA.jpeg" alt="img"></p>
+<p>用IDC机器下载没问题，但是远程办公下载了几次都是失败，怀疑和下载速度相关。</p>
+<p>梳理下调用链路：</p>
+<pre><code>客户端 ---&gt; 我方Nginx ---&gt; 我方后台服务 ---&gt; 被调方Nginx ---&gt; 被调用Tomcat
+</code></pre><p>期间怀疑是不是某个网关有问题，把连接断掉了。</p>
+<p>但在我方后台服务的日志中发现了下面这行：</p>
+<pre><code>httputil: ReverseProxy read error during body copy: unexpected EOF
+</code></pre><p>说明我方服务是没问题的，被调方的Nginx关掉了连接。</p>
+<p>为了简化问题，我直接访问被调方Nginx，然后限速下载，问题重现了：</p>
+<p><img src="/images/%E9%99%90%E9%80%9F%E4%B8%8B%E8%BD%BD%E5%A4%B1%E8%B4%A5.jpeg" alt="img"></p>
+<p>在机器上抓包，发现确实是对方Nginx关闭了连接。</p>
+<p><img src="/images/%E5%AF%B9%E6%96%B9Nginx%E5%85%B3%E9%97%AD%E8%BF%9E%E6%8E%A5.jpeg" alt="img"></p>
+<p>对方Nginx的errlog里面看到下面日志：</p>
+<pre><code>2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&quot;
+</code></pre><p>说明是Tomcat关掉了连接。</p>
+<p>至此问题有点卡主了，为什么Tomcat会关闭掉连接呢？<br>
+因为没有对方机器权限，调试看日志抓包比来比较麻烦，问题暂且搁置了。</p>
+<p>这个问题一直搁置在脑袋里面回想，突然意识到为什么不是我方Nginx断掉连接呢？<br>
+意识到我在Nginx加了一个配置<code>proxy_request_buffering</code>，即关掉请求buffer，不将读缓存到磁盘。我方Nginx和后端服务都是读多少传多少，不缓存。</p>
+<p>猜测对方Nginx应该没有这个配置，在慢网络下载中，对方Nginx从Tomcat后端下载很快，所以Nginx会很快将缓存文件写满，之后Nginx不再去Tomcat读，Tomcat将socket缓冲区写满后，就会触发写超时（默认60s），关闭连接。</p>
+<p>向对方确认，确实配置了<code>proxy_max_temp_file_size 128m</code>，用curl限速2M去下载，只能下载135M左右是能解释通的。</p>
+<p>用相关关键词搜索了下有一个关于这个case的ticket（见参考链接）：</p>
+<blockquote>
+<p>The 1GB limit suggests that the problem is due to ​proxy_max_temp_file_size. It is one gigabyte by default, and if the limit is reached, nginx will stop reading from the backend till all disk-buffered data are sent to the client. This in turn can result in a send timeout on the backend side.</p>
+</blockquote>
+<blockquote>
+<p>Please check nginx and your backend logs to see what happens here. Likely there are something like &ldquo;upstream prematurely closed connection&rdquo; in nginx error log, and send timeouts in your backend logs. Alternatively, just check if proxy_max_temp_file_size 0; helps (this will disable disk buffering completely).</p>
+</blockquote>
+<p>解决方案是：</p>
+<blockquote>
+<ul>
+<li>Tune proxy_max_temp_file_size. Consider either configuring the limit above the size of all expected responses, or small enough for your backend to don&rsquo;t time out. In particular, proxy_max_temp_file_size 0; might be a good choice when proxying large files.</li>
+<li>Tune your backend timeouts appropriately.</li>
+</ul>
+</blockquote>
+<h1 id="参考">参考</h1>
+<ul>
+<li><a href="https://www.jfrog.com/jira/browse/RTFACT-16743">https://www.jfrog.com/jira/browse/RTFACT-16743</a></li>
+<li><a href="https://trac.nginx.org/nginx/ticket/1472">https://trac.nginx.org/nginx/ticket/1472</a></li>
+</ul>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+

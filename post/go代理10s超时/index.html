@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.68.3" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/go%E4%BB%A3%E7%90%8610s%E8%B6%85%E6%97%B6/">
+
+  <title>Go代理10S超时 - </title>
+  <meta property="og:title" content="Go代理10S超时 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">Go代理10S超时</h1>
+      <time class="post-date" datetime="2020-04-21 00:00:00 UTC">21 Apr 2020</time>
+    </header>
+
+    <h3 id="背景">背景</h3>
+<p>机器通过代理去请求，请求会触发超时，稳定在10S多一点。</p>
+<h3 id="分析">分析</h3>
+<p>几个现象：</p>
+<ul>
+<li>不通过代理机器访问没问题</li>
+<li>代理机器直接访问也没有问题</li>
+<li>只有通过代理访问才会触发10S超时</li>
+</ul>
+<p>首先，抓个包看下：</p>
+<p><img src="/images/%E4%BB%A3%E7%90%8610S%E8%B6%85%E6%97%B6.jpeg" alt="img"></p>
+<p>抓包能看出：</p>
+<ul>
+<li>客户端和代理服务器握手和第一个connect请求都没问题</li>
+<li>代理服务器在和目标机器建立连接的时候就花了10S，然后才响应connect请求</li>
+<li>后面的数据包交互很快</li>
+</ul>
+<p>猜测是代理机器的问题，但是在代理机器用curl去访问目标机器也没问题，难道是代理程序问题？<br>
+想到之前有看到过一篇文章，go dns触发超时，难道是DNS问题？</p>
+<p>为了快速解决验证问题，马上将DNS换成网管提供的最新IP，发现超时问题确实解决了。</p>
+<p>来看看Go是怎么解析DNS，为什么超时是10S。</p>
+<pre><code>func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) {
+    order := systemConf().hostLookupOrder(r, host)
+    if !r.preferGo() &amp;&amp; order == hostLookupCgo {
+        if addrs, err, ok := cgoLookupHost(ctx, host); ok {
+            return addrs, err
+        }
+        // cgo not available (or netgo); fall back to Go's DNS resolver
+        order = hostLookupFilesDNS
+    }
+    return r.goLookupHostOrder(ctx, host, order)
+</code></pre><p>Go通过不同环境、配置来采取是用cgo还是pure go来解析DNS。</p>
+<p>如果cgo解析失败，尝试用pure go解析。darwin默认强制使用cgo解析，linux使用pure go。当然你也可以通过GODEBUG来改：</p>
+<pre><code>⇒  GODEBUG=netdns=go+2 go run test.go
+go package net: GODEBUG setting forcing use of Go's resolver
+go package net: hostLookupOrder(baidu.com) = files,dns
+2020/04/21 22:13:22 [39.156.69.79 220.181.38.148]
+</code></pre><p>看看pure go是怎么解析的：</p>
+<pre><code>// Do a lookup for a single name, which must be rooted
+// (otherwise answer will not find the answers).
+func (r *Resolver) tryOneName(ctx context.Context, cfg *dnsConfig, name string, qtype dnsmessage.Type) (dnsmessage.Parser, string, error) {
+    var lastErr error
+    serverOffset := cfg.serverOffset()
+    sLen := uint32(len(cfg.servers))
+
+    n, err := dnsmessage.NewName(name)
+    if err != nil {
+        return dnsmessage.Parser{}, &quot;&quot;, errCannotMarshalDNSMessage
+    }
+    q := dnsmessage.Question{
+        Name:  n,
+        Type:  qtype,
+        Class: dnsmessage.ClassINET,
+    }
+
+    for i := 0; i &lt; cfg.attempts; i++ {
+        for j := uint32(0); j &lt; sLen; j++ {
+            server := cfg.servers[(serverOffset+j)%sLen]
+
+            p, h, err := r.exchange(ctx, server, q, cfg.timeout, cfg.useTCP)
+            ...
+    }
+</code></pre><p>可以看出每个DNS server在timeout内没返回，就会尝试下一个server，直到尝试attempts次，attempts默认是2，timeout默认是5S。</p>
+<pre><code>// See resolv.conf(5) on a Linux machine.
+func dnsReadConfig(filename string) *dnsConfig {
+    conf := &amp;dnsConfig{
+        ndots:    1,
+        timeout:  5 * time.Second,
+        attempts: 2,
+    }
+</code></pre><p>可以写个简单的程序验证下：</p>
+<pre><code>package main
+
+import &quot;net&quot;
+import &quot;log&quot;
+
+func main(){
+    res, err := net.LookupHost(&quot;baidu.com&quot;)
+    if err != nil {
+        log.Fatal(err)
+        return
+    }
+    log.Printf(&quot;%v&quot;, res)
+}
+
+</code></pre><p>DNS修改为:</p>
+<pre><code>options timeout:5 attempts:3
+nameserver 1.1.1.1
+nameserver 2.2.2.2
+nameserver 3.3.3.3
+</code></pre><p>DNS都不会通，正常程序会45S（5x3x3）后会失败退出：</p>
+<pre><code>[root@VM_15_30_centos ~]# time GODEBUG=netdns=go+3 go run main.go
+go package net: GODEBUG setting forcing use of Go's resolver
+go package net: hostLookupOrder(baidu.com) = files,dns
+2020/04/21 22:38:01 lookup baidu.com on 3.3.3.3:53: read udp 192.168.1.2:58704-&gt;3.3.3.3:53: i/o timeout
+exit status 1
+
+real    0m45.259s
+user    0m0.240s
+sys 0m0.040s
+</code></pre><ul>
+<li>PS：另外DNS最多配置3个，我发现有的同学配置了很多个，但其实只有前面3个才生效。</li>
+</ul>
+<p>go也是按标准来实现的：</p>
+<pre><code>        case &quot;nameserver&quot;: // add one name server
+            if len(f) &gt; 1 &amp;&amp; len(conf.servers) &lt; 3 { // small, but the standard limit
+                // One more check: make sure server name is
+                // just an IP address. Otherwise we need DNS
+                // to look it up.
+              ...
+            }
+</code></pre><p>到这里可以判断出：之前代理机器resolv.conf前面两台DNS不能正常解析，第三台DNS是好的。所以才触发了10S超时。</p>
+<p>另外pure go的DNS是没有cache的，而且net.Dial里面的Resolver是一个struct，不是interface，不方便去做替换。</p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+

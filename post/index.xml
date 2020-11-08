@@ -6,10 +6,28 @@
     <description>Recent content in Posts on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 01 Aug 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sat, 24 Oct 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>docker仓库优化</title>
+      <link>https://ls0f.github.io/post/docker%E4%BB%93%E5%BA%93%E4%BC%98%E5%8C%96/</link>
+      <pubDate>Sat, 24 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/docker%E4%BB%93%E5%BA%93%E4%BC%98%E5%8C%96/</guid>
+      <description>自19年底上线docker仓库服务，很长一段时间服务都比较稳定，但随着业务上量，有些问题开始出现&amp;hellip;
+ 最初架构 最初docker仓库是定位于开发测试用，得易于我们接入VIP在各个网络专区基本都能连通，很快吸引了一大批用户把镜像上传到我们这里。
+作为一个公司级的源服务，不少业务直接将镜像应用到了生产环境。 随着业务容器化上云的趋势越来越强，k8s集群的量和规模都越来越大，对镜像仓库造成了不少压力。6月份因为请求突增，问题开始出现，主要是docker仓库存储ceph上面遇到的两个问题：
+ ceph rgw接入机器网卡打满 并发量高ceph rgw处理线程满  因为nginx接入层机器比ceph rgw接入机器数量多，提供的带宽能力是不等的。rgw是多线程同步阻塞IO模型，一个请求会占用一个处理线程，镜像因为体积大处理耗时多，在并发量高的时候处理线程会被占满，新请求得不到aceept超时。
+接入层缓存 除了给ceph rgw扩容外，我们紧急在接入层上线了docker proxy组件。 此组件的主要功能是代理镜像下载请求，如果本地无缓存，回源到ceph拉一份，否则直接从本地返回。如果并发下载同一个镜像且本地没有缓存，proxy会在本地hold住，只回源一次，避免对ceph造成冲击。
+docker proxy上线后，极大缓解了ceph的压力。回源请求数约1%，回源流量约5%。 主站流控 &amp;amp; 多地域就近接入 上线docker proxy后，虽然ceph的流量已经没什么压力，但是我们自身接入层nginx的流量却很容易被打满。
+可能解决办法有：
+ 扩容接入层nginx缓解问题，但是TGW VIP本身也是有带宽上限，盲目扩容势必会给VIP带来压力，影响链路质量 增加TGW VIP，缺点是要去重新申请打通网络策略，并且我们接入层也要完整再部署一次，相对比较麻烦一些  我们采用了主站流控+多地域就近接入方案。 为了避免业务k8s集群扩容对软件源主站造成影响，我们在主站对单个docker仓库命名空间以及系统全局的拉取流量进行控制，避免docker的大流量对其他源造成影响。
+另外k8s集群基本部署在自研或者云机房，和我们服务器是可以直连的，我们在华南、华东、西南、华北主要地域部署docker proxy组件，可针对有大流量下载的命名空间开启就近接入，主站接入层根据拉取机器的地域将请求重定向给最近的docker proxy节点去处理，这样既避免了主站的流量压力又提高了下载速度。
+某业务扩容期间，华南接入点流量情况（万兆机器）: 最后 这种大流量的场景，计成本的中心式服务始终会存在瓶颈，P2P或许才是最好的方案，但这个涉及到客户端改造，又是另外一个问题了&amp;hellip;</description>
+    </item>
     
     <item>
       <title>被忽视的Alarm和Pause</title>
@@ -26,6 +44,51 @@ import signal signal.alarm(1) while 1: pass 上面调用alarm(1)，表示要内�
 Pause 有时写程序调试时，希望运行完后不要退出，保留现场，这个时候可以用pause，使程序进入sleep状态。 当调试完毕的时候，再crt+c退出。
 import signal # debug here signal.pause() Links Alarm
 Pause</description>
+    </item>
+    
+    <item>
+      <title>Go代理10S超时</title>
+      <link>https://ls0f.github.io/post/go%E4%BB%A3%E7%90%8610s%E8%B6%85%E6%97%B6/</link>
+      <pubDate>Tue, 21 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/go%E4%BB%A3%E7%90%8610s%E8%B6%85%E6%97%B6/</guid>
+      <description>背景 机器通过代理去请求，请求会触发超时，稳定在10S多一点。
+分析 几个现象：
+ 不通过代理机器访问没问题 代理机器直接访问也没有问题 只有通过代理访问才会触发10S超时  首先，抓个包看下：
+抓包能看出：
+ 客户端和代理服务器握手和第一个connect请求都没问题 代理服务器在和目标机器建立连接的时候就花了10S，然后才响应connect请求 后面的数据包交互很快  猜测是代理机器的问题，但是在代理机器用curl去访问目标机器也没问题，难道是代理程序问题？
+想到之前有看到过一篇文章，go dns触发超时，难道是DNS问题？
+为了快速解决验证问题，马上将DNS换成网管提供的最新IP，发现超时问题确实解决了。
+来看看Go是怎么解析DNS，为什么超时是10S。
+func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) { order := systemConf().hostLookupOrder(r, host) if !r.preferGo() &amp;amp;&amp;amp; order == hostLookupCgo { if addrs, err, ok := cgoLookupHost(ctx, host); ok { return addrs, err } // cgo not available (or netgo); fall back to Go&#39;s DNS resolver order = hostLookupFilesDNS } return r.</description>
+    </item>
+    
+    <item>
+      <title>从Nginx下载大文件不完整</title>
+      <link>https://ls0f.github.io/post/%E4%BB%8Enginx%E5%A4%A7%E6%96%87%E4%BB%B6%E4%B8%8B%E8%BD%BD%E4%B8%8D%E5%AE%8C%E5%85%A8/</link>
+      <pubDate>Fri, 10 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/%E4%BB%8Enginx%E5%A4%A7%E6%96%87%E4%BB%B6%E4%B8%8B%E8%BD%BD%E4%B8%8D%E5%AE%8C%E5%85%A8/</guid>
+      <description>背景 业务反馈下载一个7GB左右的大文件，总是下载一个到1GB左右就断掉了。
+分析 在机器上重试，发现能够稳定重现。
+用curl去下载：
+用IDC机器下载没问题，但是远程办公下载了几次都是失败，怀疑和下载速度相关。
+梳理下调用链路：
+客户端 ---&amp;gt; 我方Nginx ---&amp;gt; 我方后台服务 ---&amp;gt; 被调方Nginx ---&amp;gt; 被调用Tomcat 期间怀疑是不是某个网关有问题，把连接断掉了。
+但在我方后台服务的日志中发现了下面这行：
+httputil: ReverseProxy read error during body copy: unexpected EOF 说明我方服务是没问题的，被调方的Nginx关掉了连接。
+为了简化问题，我直接访问被调方Nginx，然后限速下载，问题重现了：
+在机器上抓包，发现确实是对方Nginx关闭了连接。
+对方Nginx的errlog里面看到下面日志：
+2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&amp;quot; 说明是Tomcat关掉了连接。
+至此问题有点卡主了，为什么Tomcat会关闭掉连接呢？
+因为没有对方机器权限，调试看日志抓包比来比较麻烦，问题暂且搁置了。
+这个问题一直搁置在脑袋里面回想，突然意识到为什么不是我方Nginx断掉连接呢？
+意识到我在Nginx加了一个配置proxy_request_buffering，即关掉请求buffer，不将读缓存到磁盘。我方Nginx和后端服务都是读多少传多少，不缓存。
+猜测对方Nginx应该没有这个配置，在慢网络下载中，对方Nginx从Tomcat后端下载很快，所以Nginx会很快将缓存文件写满，之后Nginx不再去Tomcat读，Tomcat将socket缓冲区写满后，就会触发写超时（默认60s），关闭连接。
+向对方确认，确实配置了proxy_max_temp_file_size 128m，用curl限速2M去下载，只能下载135M左右是能解释通的。
+用相关关键词搜索了下有一个关于这个case的ticket（见参考链接）：
+ The 1GB limit suggests that the problem is due to ​proxy_max_temp_file_size. It is one gigabyte by default, and if the limit is reached, nginx will stop reading from the backend till all disk-buffered data are sent to the client.</description>
     </item>
     
     <item>
