@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.68.3" />
+  <meta name="generator" content="Hugo 0.60.1" />
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,9 +36,9 @@
       <time class="post-date" datetime="2020-04-10 00:00:00 UTC">10 Apr 2020</time>
     </header>
 
-    <h1 id="背景">背景</h1>
+    <h1 id="heading">背景</h1>
 <p>业务反馈下载一个7GB左右的大文件，总是下载一个到1GB左右就断掉了。</p>
-<h1 id="分析">分析</h1>
+<h1 id="heading1">分析</h1>
 <p>在机器上重试，发现能够稳定重现。</p>
 <p><img src="/images/%E4%B8%8B%E8%BD%BD1GB%E5%A4%B1%E8%B4%A5.jpeg" alt="img"></p>
 <p>用curl去下载：</p>
@@ -73,11 +73,11 @@
 <p>解决方案是：</p>
 <blockquote>
 <ul>
-<li>Tune proxy_max_temp_file_size. Consider either configuring the limit above the size of all expected responses, or small enough for your backend to don&rsquo;t time out. In particular, proxy_max_temp_file_size 0; might be a good choice when proxying large files.</li>
+<li>Tune proxy_max_temp_file_size. Consider either configuring the limit above the size of all expected responses, or small enough for your backend to don't time out. In particular, proxy_max_temp_file_size 0; might be a good choice when proxying large files.</li>
 <li>Tune your backend timeouts appropriately.</li>
 </ul>
 </blockquote>
-<h1 id="参考">参考</h1>
+<h1 id="heading2">参考</h1>
 <ul>
 <li><a href="https://www.jfrog.com/jira/browse/RTFACT-16743">https://www.jfrog.com/jira/browse/RTFACT-16743</a></li>
 <li><a href="https://trac.nginx.org/nginx/ticket/1472">https://trac.nginx.org/nginx/ticket/1472</a></li>

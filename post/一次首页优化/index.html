@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.68.3" />
+  <meta name="generator" content="Hugo 0.60.1" />
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -37,7 +37,7 @@
     </header>
 
     <p>网站的首页需要调用其他业务同学提供的接口，上线后发现调用这个接口会有一定的延迟，用户需要等待较长时间，于是我们想着怎么样最快的把首页呈现给用户。</p>
-<h3 id="首页静态化">首页静态化</h3>
+<h3 id="heading">首页静态化</h3>
 <p>第一个冒入脑海的想法就是<strong>首页静态化</strong>，然而在前后端分离大行其道的今天，首页长这样(为了演示我format了一下)：</p>
 <pre><code>&lt;!DOCTYPE html&gt;
 &lt;html lang=en&gt;
@@ -75,9 +75,9 @@
    &lt;/body&gt;
 &lt;/html&gt;
 </code></pre><p>根本没有任何数据Dom可以操作，不能为了静态化让前端再开发一个模板首页（我可能会被前端妹子打），后端再去定期渲染持久化。这好像又回到了前后端糅杂的时代，前端写模板，后端渲染。</p>
-<h3 id="接口缓存">接口缓存</h3>
+<h3 id="heading1">接口缓存</h3>
 <p>也就是说不要每次请求都去请求外部接口，而是缓存起来，不管KV还是文件，这种看起来是最简单的，前端也不需要修改。 然而我却选择了下一种↓↓↓</p>
-<h3 id="js缓存">JS缓存</h3>
+<h3 id="js">JS缓存</h3>
 <p>后台会生成一个JS文件，周期性去更新。里面存储了需要的数据，类似长下面这样：</p>
 <pre><code>var ResData = [item, item, item...]
 </code></pre><p>前端在首页HEAD直接引用JS：</p>
