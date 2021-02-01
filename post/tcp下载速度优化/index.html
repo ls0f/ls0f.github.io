@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.60.1" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/tcp%E4%B8%8B%E8%BD%BD%E9%80%9F%E5%BA%A6%E4%BC%98%E5%8C%96/">
+
+  <title>TCP下载速度优化 - </title>
+  <meta property="og:title" content="TCP下载速度优化 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">TCP下载速度优化</h1>
+      <time class="post-date" datetime="2021-02-01 00:00:00 UTC">01 Feb 2021</time>
+    </header>
+
+    <h1 id="heading">背景</h1>
+<p>新上线的一批天津机房机器，从深圳机房下载大文件速度只能到40MB/s，不符合预期需要排查</p>
+<h1 id="heading1">解决</h1>
+<h3 id="rtt">测试RTT</h3>
+<p>用ping测试RTT，天津到深圳稳定35ms左右</p>
+<pre><code>64 bytes from x.x.x.x: icmp_seq=1 ttl=54 time=35.3 ms
+64 bytes from x.x.x.x: icmp_seq=2 ttl=54 time=35.3 ms
+64 bytes from x.x.x.x: icmp_seq=3 ttl=54 time=35.3 ms
+64 bytes from x.x.x.x: icmp_seq=4 ttl=54 time=35.3 ms
+
+--- x.x.x.x ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms
+</code></pre><h3 id="udp">测试UDP带宽</h3>
+<p>服务端运行<code>iperf3 -s -p 5001</code></p>
+<p>客户端运行<code>iperf3 -c x.x.x.x -p 5001 -i 2 -t 30 -u -b 10G</code><br>
+显示单连接吞吐量可到5.18Gb/s，说明跨城带宽是没有问题的。</p>
+<pre><code>[ ID] Interval           Transfer     Bandwidth       Total Datagrams
+[  4]   0.00-2.00   sec  1.15 GBytes  4.96 Gbits/sec  151272  
+[  4]   2.00-4.00   sec  1.21 GBytes  5.19 Gbits/sec  158350  
+[  4]   4.00-6.00   sec  1.21 GBytes  5.18 Gbits/sec  158193  
+[  4]   6.00-8.00   sec  1.21 GBytes  5.19 Gbits/sec  158259  
+[  4]   8.00-10.00  sec  1.21 GBytes  5.19 Gbits/sec  158483  
+[  4]  10.00-12.00  sec  1.21 GBytes  5.19 Gbits/sec  158290  
+[  4]  12.00-14.00  sec  1.22 GBytes  5.23 Gbits/sec  159533  
+[  4]  14.00-16.00  sec  1.21 GBytes  5.20 Gbits/sec  158626  
+[  4]  16.00-18.00  sec  1.22 GBytes  5.23 Gbits/sec  159465  
+[  4]  18.00-20.00  sec  1.21 GBytes  5.18 Gbits/sec  158034  
+[  4]  20.00-22.00  sec  1.21 GBytes  5.21 Gbits/sec  158916  
+[  4]  22.00-24.00  sec  1.21 GBytes  5.20 Gbits/sec  158641  
+[  4]  24.00-26.00  sec  1.21 GBytes  5.19 Gbits/sec  158458  
+[  4]  26.00-28.00  sec  1.20 GBytes  5.17 Gbits/sec  157761  
+[  4]  28.00-30.00  sec  1.20 GBytes  5.15 Gbits/sec  157114  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Jitter    Lost/Total Datagrams
+[  4]   0.00-30.00  sec  18.1 GBytes  5.18 Gbits/sec  1.149 ms  0/1 (0%)  
+[  4] Sent 1 datagrams
+</code></pre><h3 id="tcp">测试TCP下载</h3>
+<p>客户端运行<code>iperf3 -c x.x.x.x -p 5001 -i 2 -t 30 -R</code><br>
+单连接吞吐量只能到30Mb/s，不符合预期</p>
+<pre><code>[ ID] Interval           Transfer     Bandwidth
+[  4]   0.00-2.00   sec  41.7 MBytes   175 Mbits/sec                  
+[  4]   2.00-4.00   sec  55.9 MBytes   234 Mbits/sec                  
+[  4]   4.00-6.00   sec  60.5 MBytes   254 Mbits/sec                  
+[  4]   6.00-8.00   sec  62.6 MBytes   263 Mbits/sec                  
+[  4]   8.00-10.00  sec  63.2 MBytes   265 Mbits/sec                  
+[  4]  10.00-12.00  sec  63.2 MBytes   265 Mbits/sec                  
+[  4]  12.00-14.00  sec  64.9 MBytes   272 Mbits/sec                  
+[  4]  14.00-16.00  sec  70.0 MBytes   294 Mbits/sec                  
+[  4]  16.00-18.00  sec  78.9 MBytes   331 Mbits/sec                  
+[  4]  18.00-20.00  sec  84.7 MBytes   355 Mbits/sec                  
+[  4]  20.00-22.00  sec  84.7 MBytes   355 Mbits/sec                  
+[  4]  22.00-24.00  sec  84.7 MBytes   355 Mbits/sec                  
+[  4]  24.00-26.00  sec  84.5 MBytes   354 Mbits/sec                  
+[  4]  26.00-28.00  sec  84.3 MBytes   354 Mbits/sec                  
+[  4]  28.00-30.00  sec  84.6 MBytes   355 Mbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  4]   0.00-30.00  sec  1.05 GBytes   300 Mbits/sec   33             sender
+[  4]   0.00-30.00  sec  1.05 GBytes   299 Mbits/sec                  receiver
+</code></pre><p>服务端日志中可以到Cwnd是缓慢增加到1.51MB后就不变化了。</p>
+<pre><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  5]   0.00-1.00   sec  18.0 MBytes   151 Mbits/sec   33    865 KBytes       
+[  5]   1.00-2.00   sec  25.0 MBytes   209 Mbits/sec    0    956 KBytes       
+[  5]   2.00-3.00   sec  27.4 MBytes   230 Mbits/sec    0   1023 KBytes       
+[  5]   3.00-4.00   sec  28.7 MBytes   241 Mbits/sec    0   1.05 MBytes       
+[  5]   4.00-5.00   sec  30.0 MBytes   251 Mbits/sec    0   1.08 MBytes       
+[  5]   5.00-6.00   sec  31.2 MBytes   262 Mbits/sec    0   1.10 MBytes       
+[  5]   6.00-7.00   sec  31.2 MBytes   261 Mbits/sec    0   1.11 MBytes       
+[  5]   7.00-8.00   sec  31.2 MBytes   262 Mbits/sec    0   1.11 MBytes       
+[  5]   8.00-9.00   sec  32.5 MBytes   273 Mbits/sec    0   1.11 MBytes       
+[  5]   9.00-10.00  sec  31.2 MBytes   262 Mbits/sec    0   1.11 MBytes       
+[  5]  10.00-11.00  sec  31.2 MBytes   262 Mbits/sec    0   1.11 MBytes       
+[  5]  11.00-12.00  sec  31.2 MBytes   262 Mbits/sec    0   1.12 MBytes       
+[  5]  12.00-13.00  sec  32.5 MBytes   272 Mbits/sec    0   1.15 MBytes       
+[  5]  13.00-14.00  sec  32.5 MBytes   273 Mbits/sec    0   1.18 MBytes       
+[  5]  14.00-15.00  sec  35.0 MBytes   294 Mbits/sec    0   1.23 MBytes       
+[  5]  15.00-16.00  sec  35.0 MBytes   294 Mbits/sec    0   1.30 MBytes       
+[  5]  16.00-17.00  sec  37.5 MBytes   315 Mbits/sec    0   1.39 MBytes       
+[  5]  17.00-18.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes       
+[  5]  18.00-19.00  sec  41.2 MBytes   346 Mbits/sec    0   1.51 MBytes
+[  5]  19.00-20.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes       
+[  5]  20.00-21.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes       
+[  5]  21.00-22.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes  
+</code></pre><h3 id="heading2">调参</h3>
+<blockquote>
+<p>TCP下载速度 = Cwnd / RTT <br>
+Cwnd = Min(拥塞窗口,接收窗口)</p>
+</blockquote>
+<p>套用公式 1.51MB/35*1000 = 43MB，符合iperf3的日志结果。</p>
+<p>查看客户端的TCP读缓冲区大小</p>
+<pre><code>root@admin:~# sysctl -a | grep tcp_rmem
+net.ipv4.tcp_rmem = 4096        87380   6291456
+</code></pre><p>调大客户端的TCPC读缓冲区大小(会增大TCP的接收窗口)<br>
+<code>sysctl -w net.ipv4.tcp_rmem='4096 2621440 16777216'</code></p>
+<p>再次用iperf压测，单连速度可以到100MB/s，符合业务需求。</p>
+<pre><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  5]   0.00-1.00   sec  49.9 MBytes   418 Mbits/sec  465   2.20 MBytes       
+[  5]   1.00-2.00   sec  62.5 MBytes   524 Mbits/sec    0   2.38 MBytes       
+[  5]   2.00-3.00   sec  68.8 MBytes   577 Mbits/sec    0   2.53 MBytes       
+[  5]   3.00-4.00   sec  73.8 MBytes   619 Mbits/sec    0   2.66 MBytes       
+[  5]   4.00-5.00   sec  75.0 MBytes   629 Mbits/sec    0   2.76 MBytes       
+[  5]   5.00-6.00   sec  78.8 MBytes   661 Mbits/sec    0   2.83 MBytes       
+[  5]   6.00-7.00   sec  81.2 MBytes   682 Mbits/sec    0   2.89 MBytes       
+[  5]   7.00-8.00   sec  81.2 MBytes   682 Mbits/sec    0   2.92 MBytes       
+[  5]   8.00-9.00   sec  81.2 MBytes   682 Mbits/sec    0   2.95 MBytes       
+[  5]   9.00-10.00  sec  83.8 MBytes   703 Mbits/sec    0   2.96 MBytes       
+[  5]  10.00-11.00  sec  82.5 MBytes   692 Mbits/sec    0   2.96 MBytes       
+[  5]  11.00-12.00  sec  82.5 MBytes   692 Mbits/sec    0   2.96 MBytes       
+[  5]  12.00-13.00  sec  83.8 MBytes   703 Mbits/sec    0   2.96 MBytes       
+[  5]  13.00-14.00  sec  82.5 MBytes   692 Mbits/sec    0   2.97 MBytes       
+[  5]  14.00-15.00  sec  82.5 MBytes   692 Mbits/sec    0   2.97 MBytes       
+[  5]  15.00-16.00  sec  85.0 MBytes   713 Mbits/sec    0   2.99 MBytes       
+[  5]  16.00-17.00  sec  83.8 MBytes   703 Mbits/sec    0   3.02 MBytes       
+[  5]  17.00-18.00  sec  85.0 MBytes   713 Mbits/sec    0   3.06 MBytes       
+[  5]  18.00-19.00  sec  87.5 MBytes   734 Mbits/sec    0   3.13 MBytes       
+[  5]  19.00-20.00  sec  88.8 MBytes   744 Mbits/sec    0   3.21 MBytes       
+[  5]  20.00-21.00  sec  91.2 MBytes   765 Mbits/sec    0   3.32 MBytes       
+[  5]  21.00-22.00  sec  96.2 MBytes   807 Mbits/sec    0   3.46 MBytes       
+[  5]  22.00-23.00  sec   100 MBytes   839 Mbits/sec    0   3.63 MBytes       
+[  5]  23.00-24.00  sec   104 MBytes   870 Mbits/sec    0   3.83 MBytes       
+[  5]  24.00-25.00  sec   112 MBytes   944 Mbits/sec    0   4.01 MBytes       
+[  5]  25.00-26.00  sec   111 MBytes   933 Mbits/sec    0   4.01 MBytes       
+[  5]  26.00-27.00  sec   112 MBytes   944 Mbits/sec    0   4.01 MBytes       
+[  5]  27.00-28.00  sec   112 MBytes   944 Mbits/sec    0   4.01 MBytes       
+[  5]  28.00-29.00  sec   112 MBytes   944 Mbits/sec    0   4.01 MBytes       
+[  5]  29.00-30.00  sec   111 MBytes   933 Mbits/sec    0   4.01 MBytes       
+[  5]  30.00-30.03  sec  3.75 MBytes   907 Mbits/sec    0   4.01 MBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  5]   0.00-30.03  sec  2.59 GBytes   739 Mbits/sec  465             sender
+[  5]   0.00-30.03  sec  2.58 GBytes   738 Mbits/sec                  receiver
+</code></pre><h2 id="ref">Ref</h2>
+<p><a href="https://wwwx.cs.unc.edu/~sparkst/howto/network_tuning.php">https://wwwx.cs.unc.edu/~sparkst/howto/network_tuning.php</a><br>
+<a href="https://zhuanlan.zhihu.com/p/80043707">https://zhuanlan.zhihu.com/p/80043707</a></p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+

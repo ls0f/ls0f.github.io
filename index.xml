@@ -6,10 +6,22 @@
     <description>Recent content on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 24 Oct 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 01 Feb 2021 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>TCP下载速度优化</title>
+      <link>https://ls0f.github.io/post/tcp%E4%B8%8B%E8%BD%BD%E9%80%9F%E5%BA%A6%E4%BC%98%E5%8C%96/</link>
+      <pubDate>Mon, 01 Feb 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/tcp%E4%B8%8B%E8%BD%BD%E9%80%9F%E5%BA%A6%E4%BC%98%E5%8C%96/</guid>
+      <description>背景 新上线的一批天津机房机器，从深圳机房下载大文件速度只能到40MB/s，不符合预期需要排查
+解决 测试RTT 用ping测试RTT，天津到深圳稳定35ms左右
+64 bytes from x.x.x.x: icmp_seq=1 ttl=54 time=35.3 ms 64 bytes from x.x.x.x: icmp_seq=2 ttl=54 time=35.3 ms 64 bytes from x.x.x.x: icmp_seq=3 ttl=54 time=35.3 ms 64 bytes from x.x.x.x: icmp_seq=4 ttl=54 time=35.3 ms --- x.x.x.x ping statistics --- 4 packets transmitted, 4 received, 0% packet loss, time 3004ms rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms 测试UDP带宽 服务端运行iperf3 -s -p 5001
+客户端运行iperf3 -c x.x.x.x -p 5001 -i 2 -t 30 -u -b 10G</description>
+    </item>
     
     <item>
       <title>docker仓库优化</title>
