@@ -161,5 +161,6 @@ net.ipv4.tcp_rmem = 4096        87380   6291456
 ```
 
 ## Ref
+https://www.ietf.org/proceedings/92/slides/slides-92-iccrg-0.pdf
 https://wwwx.cs.unc.edu/~sparkst/howto/network_tuning.php  
 https://zhuanlan.zhihu.com/p/80043707
