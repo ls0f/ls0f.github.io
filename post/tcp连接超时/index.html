@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.60.1" />
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/tcp%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6/">
+
+  <title>TCP连接超时 - </title>
+  <meta property="og:title" content="TCP连接超时 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">TCP连接超时</h1>
+      <time class="post-date" datetime="2021-02-03 00:00:00 UTC">03 Feb 2021</time>
+    </header>
+
+    <h1 id="heading">背景</h1>
+<p>线上Nginx服务突然报错，日志打印Connection timed out</p>
+<h1 id="heading1">排查</h1>
+<p>首先看一下完整日志</p>
+<pre><code>connect() failed (110: Connection timed out) while connecting to upstream ....
+</code></pre><p><strong>说明在三次握手阶段没有收到对方的SYN+ACK包</strong><br>
+用ping和curl确定网络没问题后，猜测是对方丢掉了SYN包</p>
+<h3 id="dmesg">dmesg</h3>
+<p>在目标服务机器上执行dmesg，有提示<code>Possible SYN flooding on port 7000</code>，正是程序监听端口， 说明TCP半连接队列已经满了。</p>
+<pre><code>root@admin:~# dmesg | tail
+[22430720.630480] [20643]     0 20643    27755      158      14        0            -1 sleep
+[22430720.630489] Memory cgroup out of memory: Kill process 43283 (git) score 558 or sacrifice child
+[22430720.630769] Killed process 42232 (git) total-vm:10054400kB, anon-rss:9657832kB, file-rss:1268kB
+[22571596.273737] ipip: IPv4 over IPv4 tunneling driver
+[25764018.180814] Netfilter messages via NETLINK v0.30.
+[33672504.427518] NOHZ: local_softirq_pending 200
+[33724865.250280] NOHZ: local_softirq_pending 200
+[33887343.649246] TCP: TCP: Possible SYN flooding on port 7000. Sending cookies.  Check SNMP counters.
+[33887464.685796] TCP: TCP: Possible SYN flooding on port 7000. Sending cookies.  Check SNMP counters.
+[35738682.087444] NOHZ: local_softirq_pending 200
+</code></pre><h3 id="netstat">netstat</h3>
+<p>执行命令<code>watch -n 1 &quot;netstat -s  | grep LISTEN&quot;</code>，被丢弃的SYN包一直在增加，说明发生了丢包</p>
+<pre><code>3161232 SYNs to LISTEN sockets dropped
+</code></pre><p>用TcpExtListenOverflows和TcpExtListenDrops指标更直观</p>
+<pre><code>nstat -az | grep -E 'TcpExtListenOverflows|TcpExtListenDrops'
+</code></pre><p>什么情况会发生SYN丢包？</p>
+<h3 id="tcp">TCP连接队列</h3>
+<p>Linux2.2之后，TCP有两个连接队列</p>
+<p><img src="https://blog.cloudflare.com/content/images/2018/01/all-1.jpeg" alt="img"></p>
+<ul>
+<li>The SYN Queue（半连接队列）</li>
+<li>The Accept Queue（等待应用层ACCEPT）</li>
+</ul>
+<p>半连接队列保存的是SYN-Receive状态的连接，并负责超时的时候重传SYN+ACK(重传次数/proc/sys/net/ipv4/tcp_synack_retries <br>
+半连接队列大小计算比较复杂</p>
+<p>Accept Queue保存的是ESTABLISH状态的连接，队列大小等于Min(backlog, /proc/sys/net/core/somaxconn/proc/sys/net/core/somaxconn)</p>
+<p>收到SYN时:</p>
+<ul>
+<li>如果SYN Queue满
+<ul>
+<li>如果net.ipv4.tcp_syncookies=0，会直接丢弃</li>
+<li>否则输出 &ldquo;possible SYN flooding on port %d. Sending cookies. Check SNMP counters&rdquo;</li>
+</ul>
+</li>
+<li>如果Accept Queue满并且qlen_young(未重传过的半连接数量)的值大于1则直接丢弃S</li>
+</ul>
+<p>收到ACK时:</p>
+<ul>
+<li>如果Accept Queue满：
+<ul>
+<li>tcp_abort_on_overflow=1,则TCP协议栈回复RST包,该连接从SYN Queue中删除</li>
+<li>tcp_abort_on_overflow=0,则TCP协议栈将该连接标记为acked ，但仍保留在SYN queue中，并启动 timer以便重发SYN+ACK 包；当 SYN+ACK的重传次数超过 net.ipv4.tcp_synack_retries 设置的值时，再将该连接从SYN Queue中删除；</li>
+</ul>
+</li>
+</ul>
+<p>总结有两种SYN丢包的情况</p>
+<ul>
+<li>SYN Queue满并且net.ipv4.tcp_syncookies=0</li>
+<li>Accept Queue满并且qlen_young&gt;1</li>
+</ul>
+<p>服务器上开启了syncookie，说明是Accept Queue满造成的。</p>
+<pre><code>root@admin:~# sysctl net.ipv4.tcp_syncookies
+net.ipv4.tcp_syncookies = 1
+</code></pre><p>查看进程的队列情况：（Send-Q表示Accept Queue的大小，Recv-Q 表示其实际大小）</p>
+<pre><code>ss -plnt sport = :7000|cat
+State      Recv-Q Send-Q Local Address:Port               Peer Address:Port              
+LISTEN     129      128          *:7000                     *:*              
+</code></pre><p>可以看见Accept Queue已经满了。</p>
+<h3 id="heading2">为什么突然报错</h3>
+<p>看Nginx日志，有比较大的并发请求，后端是多进程同步IO模型，请求处理不过来，造成连接积压Accept Queue满。</p>
+<p><strong>后端服务也须关注SYN丢包情况</strong></p>
+<h1 id="ref">Ref</h1>
+<p><a href="https://blog.cloudflare.com/syn-packet-handling-in-the-wild/">https://blog.cloudflare.com/syn-packet-handling-in-the-wild/</a><br>
+<a href="http://veithen.io/2014/01/01/how-tcp-backlog-works-in-linux.html">http://veithen.io/2014/01/01/how-tcp-backlog-works-in-linux.html</a><br>
+<a href="https://kingsamchen.github.io/2019/12/21/syn-queue-and-accept-queue/">https://kingsamchen.github.io/2019/12/21/syn-queue-and-accept-queue/</a><br>
+<a href="https://gohalo.me/post/network-synack-queue.html">https://gohalo.me/post/network-synack-queue.html</a><br>
+<a href="https://www.kernel.org/doc/html/v5.0/networking/snmp_counter.html">https://www.kernel.org/doc/html/v5.0/networking/snmp_counter.html</a></p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+
