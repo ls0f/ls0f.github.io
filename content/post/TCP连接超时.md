@@ -60,7 +60,7 @@ Linux2.2之后，TCP有两个连接队列
 半连接队列保存的是SYN-Receive状态的连接，并负责超时的时候重传SYN+ACK(重传次数/proc/sys/net/ipv4/tcp_synack_retries    
 半连接队列大小计算比较复杂 
 
-Accept Queue保存的是ESTABLISH状态的连接，队列大小等于Min(backlog, /proc/sys/net/core/somaxconn/proc/sys/net/core/somaxconn)
+Accept Queue保存的是ESTABLISH状态的连接，队列大小等于Min(backlog, /proc/sys/net/core/somaxconn/)
 
 收到SYN时:
 
@@ -104,3 +104,4 @@ http://veithen.io/2014/01/01/how-tcp-backlog-works-in-linux.html
 https://kingsamchen.github.io/2019/12/21/syn-queue-and-accept-queue/  
 https://gohalo.me/post/network-synack-queue.html  
 https://www.kernel.org/doc/html/v5.0/networking/snmp_counter.html
+https://imroc.cc/post/202001/kubernetes-overflow-and-drop/
