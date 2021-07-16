@@ -6,10 +6,30 @@
     <description>Recent content in Posts on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 03 Feb 2021 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 16 Jul 2021 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://ls0f.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>CLB串流导致TCP连接超时</title>
+      <link>https://ls0f.github.io/post/clb%E4%B8%B2%E6%B5%81%E5%AF%BC%E8%87%B4tcp%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6/</link>
+      <pubDate>Fri, 16 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/clb%E4%B8%B2%E6%B5%81%E5%AF%BC%E8%87%B4tcp%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6/</guid>
+      <description>背景 线上Nginx服务突然报错，日志打印Connection timed out
+排查 首先看一下完整日志
+connect() failed (110: Connection timed out) while connecting to upstream .... 看来是熟悉的味道，和上次的问题一样TCP连接超时
+于是和对方业务沟通：我们出现SYN丢包了，得检查你们TCP连接队列满了是否有丢包，^_^
+对方有5台机器，发现有一台机器确实有SYN丢包问题:
+于是愉快的让对方先将这台机器隔离出来，再观察下情况。
+然鹅第二天业务高峰的时候，还是出现了TCP连接超时。
+梳理调用链路:
+客户端 -&amp;gt; 我方Nginx -&amp;gt; CLB -&amp;gt;对方Nginx -&amp;gt;对方后台服务
+仔细想想，CLB后面挂载的是对方Nginx，这货不太可能出现连接队列满的情况。 难道是网络或者CLB有丢包？
+于是和CLB助手沟通丢包问题，对方直接抛出了文档:
+关于同一个客户端通过不同的中间节点访问同一个后端 RS 的同一个端口时串流问题的说明 问题现象 同一个客户端在同一时刻，通过不同的中间节点访问同一个 RS 的同一个端口会出现串流现象。具体场景如下： 同一个客户端，同时通过同一个 CLB 的四层、七层监听器，访问同一个 RS 的同一个端口。 同一个客户端，同时通过不同 CLB 的不同监听器，访问同一个 RS 的同一个端口。 访问内网 CLB 的客户端比较集中，且后端服务相同时，有较大概率会出现串流。（访问公网 CLB 的客户端来源较广，很少出现串流。） 问题原因 当前 CLB 会透传客户端 IP 到后端 RS，因此会导致 client_ip:client_port -&amp;gt; vip:vport -&amp;gt; rs_ip:rs_port 最终变为 client_ip:client_port --&amp;gt; rs_ip:rs_port 检查确实会有可能出现串流问题，我方通过两个CLB访问对方的Nginx，两个CLB都挂载了同样的RS。 client_ip:client_port -&amp;gt; vip:vport -&amp;gt; rs_ip:rs_port 最终变为 client_ip:client_port --&amp;gt; rs_ip:rs_port</description>
+    </item>
     
     <item>
       <title>TCP连接超时</title>
