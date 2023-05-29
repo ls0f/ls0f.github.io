@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,12 +36,12 @@
       <time class="post-date" datetime="2020-04-01 00:00:00 UTC">01 Apr 2020</time>
     </header>
 
-    <h1 id="heading">背景</h1>
+    <h1 id="背景">背景</h1>
 <p>为公司内部同学提供了maven聚合代理仓库，这个聚合仓库代理了外网上十个仓库，外网网络链路的不可靠加上外网仓库的稳定性不确定，代理仓库请求容易出现请求失败，虽然失败率不高（十万分之三），但maven构建时请求的敏感性，任何一次请求失败都会导致整个构建流程失败，这里还是有可以优化的点。刚好做容灾搭建了一套备份服务，可以用请求双发来做单服务的容错。</p>
-<h1 id="heading1">实现</h1>
+<h1 id="实现">实现</h1>
 <p>请求双发在nginx层是没法做到的，由于我们有在用Go的<code>httputil.ReverseProxy</code>在做业务proxy，这上面是一个实现口。</p>
 <p>RevserseProxy的源码，发现是可以自定义Transport的。</p>
-<pre><code>type ReverseProxy struct {
+<pre tabindex="0"><code>type ReverseProxy struct {
     ...
 
     // The transport used to perform proxy requests.
@@ -49,19 +49,19 @@
     Transport http.RoundTripper
     ...
 </code></pre><p>Transport是一个interface，返回一个http response。</p>
-<pre><code>type RoundTripper interface {
+<pre tabindex="0"><code>type RoundTripper interface {
 
     RoundTrip(*Request) (*Response, error)
 }
 </code></pre><p>所以只要实现一个RoundTripper，并发请求主备机器，返回最快的response就行。</p>
 <p>这里定义一个<code>MultiRoundTripper</code>，这里当然不会再去从头实现一个发送http请求的的transport，用默认的http.DefaultTransport发送http请求就行，所以还是定义把这个interface暴露出去。</p>
-<pre><code>type MultiRoundTripper struct {
+<pre tabindex="0"><code>type MultiRoundTripper struct {
     RT            http.RoundTripper #发送http请求的transport
     BackupHost    map[string]string #需要双发的主备机器
     SupportMethod map[string]struct{} #支持双发的方法
 }
 </code></pre><p>完整实现代码：</p>
-<pre><code>type wrapResponse struct {
+<pre tabindex="0"><code>type wrapResponse struct {
     res *http.Response
     err error
 }
@@ -77,7 +77,7 @@ func (r *MultiRoundTripper) forward(req *http.Request, done chan wrapResponse, e
         // error handle
     }
     if res != nil {
-        res.Header.Set(&quot;X-Real-Server-Backend&quot;, req.Host)
+        res.Header.Set(&#34;X-Real-Server-Backend&#34;, req.Host)
     }
     select {
     case done &lt;- wrapResponse{res: res, err: err}:
@@ -123,12 +123,11 @@ func (r *MultiRoundTripper) RoundTrip(req *http.Request) (res *http.Response, er
     res, err = ret.res, ret.err
     return
 }
-
 </code></pre><p>调用</p>
-<pre><code>multiRoundTripper = NewMultiRoundTripper(http.DefaultTransport, backupHost, 
-    map[string]struct{}{&quot;GET&quot;: struct{}{}, &quot;HEAD&quot;: struct{}{}})
+<pre tabindex="0"><code>multiRoundTripper = NewMultiRoundTripper(http.DefaultTransport, backupHost, 
+    map[string]struct{}{&#34;GET&#34;: struct{}{}, &#34;HEAD&#34;: struct{}{}})
 rp = &amp;httputil.ReverseProxy{Transport: multiRoundTripper}
-</code></pre><h1 id="heading2">收益</h1>
+</code></pre><h1 id="收益">收益</h1>
 <p>不到100行代码就实现了请求容错、服务高可用，主备机器任意故障对用户请求无损，上线后错误率大概降到了十五万分之一。</p>
 
 

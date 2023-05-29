@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -47,7 +47,7 @@
 </ul>
 <p>为了模拟第三个ACK丢失的情况，我在本地运行了<code>python -m SimpleHTTPServer</code>监听8000端口。<br>
 利用iptables来模拟ACK丢包</p>
-<pre><code># 清掉iptables规则
+<pre tabindex="0"><code># 清掉iptables规则
 iptables -F
 # PSH包需要放行
 iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags PSH PSH -j ACCEPT
@@ -60,7 +60,7 @@ iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags ACK ACK -j DROP
 图片可以看到，握手的第三个ACK包虽然丢了，但是接下来的一个数据包设置了ACK位，服务端还是能握手成功，并且正常响应curl请求。</p>
 <p>如果接下来的第一个数据包也丢了会怎么样呢？我用raw socket去发包模拟验证了下，代码放在<a href="https://gist.github.com/ls0f/941912ca0cf6e756eeb4524e497a7095">这里</a></p>
 <p>注意用raw socket去发包的话，需要关闭掉tcp协议栈默认回的RST包：</p>
-<pre><code>iptables -F
+<pre tabindex="0"><code>iptables -F
 iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST RST -j DROP
 </code></pre><p><img src="/images/out_of_order.jpeg" alt="img">
 PS:<em>图片标注有问题，其实是先发了包2（模拟包1丢了），再发的包1，wireshark可以看出包的顺序有问题</em></p>

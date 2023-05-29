@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,9 +36,9 @@
       <time class="post-date" datetime="2020-04-21 00:00:00 UTC">21 Apr 2020</time>
     </header>
 
-    <h3 id="heading">背景</h3>
+    <h3 id="背景">背景</h3>
 <p>机器通过代理去请求，请求会触发超时，稳定在10S多一点。</p>
-<h3 id="heading1">分析</h3>
+<h3 id="分析">分析</h3>
 <p>几个现象：</p>
 <ul>
 <li>不通过代理机器访问没问题</li>
@@ -57,24 +57,24 @@
 想到之前有看到过一篇文章，go dns触发超时，难道是DNS问题？</p>
 <p>为了快速解决验证问题，马上将DNS换成网管提供的最新IP，发现超时问题确实解决了。</p>
 <p>来看看Go是怎么解析DNS，为什么超时是10S。</p>
-<pre><code>func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) {
+<pre tabindex="0"><code>func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) {
     order := systemConf().hostLookupOrder(r, host)
     if !r.preferGo() &amp;&amp; order == hostLookupCgo {
         if addrs, err, ok := cgoLookupHost(ctx, host); ok {
             return addrs, err
         }
-        // cgo not available (or netgo); fall back to Go's DNS resolver
+        // cgo not available (or netgo); fall back to Go&#39;s DNS resolver
         order = hostLookupFilesDNS
     }
     return r.goLookupHostOrder(ctx, host, order)
 </code></pre><p>Go通过不同环境、配置来采取是用cgo还是pure go来解析DNS。</p>
 <p>如果cgo解析失败，尝试用pure go解析。darwin默认强制使用cgo解析，linux使用pure go。当然你也可以通过GODEBUG来改：</p>
-<pre><code>⇒  GODEBUG=netdns=go+2 go run test.go
-go package net: GODEBUG setting forcing use of Go's resolver
+<pre tabindex="0"><code>⇒  GODEBUG=netdns=go+2 go run test.go
+go package net: GODEBUG setting forcing use of Go&#39;s resolver
 go package net: hostLookupOrder(baidu.com) = files,dns
 2020/04/21 22:13:22 [39.156.69.79 220.181.38.148]
 </code></pre><p>看看pure go是怎么解析的：</p>
-<pre><code>// Do a lookup for a single name, which must be rooted
+<pre tabindex="0"><code>// Do a lookup for a single name, which must be rooted
 // (otherwise answer will not find the answers).
 func (r *Resolver) tryOneName(ctx context.Context, cfg *dnsConfig, name string, qtype dnsmessage.Type) (dnsmessage.Parser, string, error) {
     var lastErr error
@@ -83,7 +83,7 @@ func (r *Resolver) tryOneName(ctx context.Context, cfg *dnsConfig, name string, 
 
     n, err := dnsmessage.NewName(name)
     if err != nil {
-        return dnsmessage.Parser{}, &quot;&quot;, errCannotMarshalDNSMessage
+        return dnsmessage.Parser{}, &#34;&#34;, errCannotMarshalDNSMessage
     }
     q := dnsmessage.Question{
         Name:  n,
@@ -99,7 +99,7 @@ func (r *Resolver) tryOneName(ctx context.Context, cfg *dnsConfig, name string, 
             ...
     }
 </code></pre><p>可以看出每个DNS server在timeout内没返回，就会尝试下一个server，直到尝试attempts次，attempts默认是2，timeout默认是5S。</p>
-<pre><code>// See resolv.conf(5) on a Linux machine.
+<pre tabindex="0"><code>// See resolv.conf(5) on a Linux machine.
 func dnsReadConfig(filename string) *dnsConfig {
     conf := &amp;dnsConfig{
         ndots:    1,
@@ -107,28 +107,27 @@ func dnsReadConfig(filename string) *dnsConfig {
         attempts: 2,
     }
 </code></pre><p>可以写个简单的程序验证下：</p>
-<pre><code>package main
+<pre tabindex="0"><code>package main
 
-import &quot;net&quot;
-import &quot;log&quot;
+import &#34;net&#34;
+import &#34;log&#34;
 
 func main(){
-    res, err := net.LookupHost(&quot;baidu.com&quot;)
+    res, err := net.LookupHost(&#34;baidu.com&#34;)
     if err != nil {
         log.Fatal(err)
         return
     }
-    log.Printf(&quot;%v&quot;, res)
+    log.Printf(&#34;%v&#34;, res)
 }
-
 </code></pre><p>DNS修改为:</p>
-<pre><code>options timeout:5 attempts:3
+<pre tabindex="0"><code>options timeout:5 attempts:3
 nameserver 1.1.1.1
 nameserver 2.2.2.2
 nameserver 3.3.3.3
 </code></pre><p>DNS都不会通，正常程序会45S（5x3x3）后会失败退出：</p>
-<pre><code>[root@VM_15_30_centos ~]# time GODEBUG=netdns=go+3 go run main.go
-go package net: GODEBUG setting forcing use of Go's resolver
+<pre tabindex="0"><code>[root@VM_15_30_centos ~]# time GODEBUG=netdns=go+3 go run main.go
+go package net: GODEBUG setting forcing use of Go&#39;s resolver
 go package net: hostLookupOrder(baidu.com) = files,dns
 2020/04/21 22:38:01 lookup baidu.com on 3.3.3.3:53: read udp 192.168.1.2:58704-&gt;3.3.3.3:53: i/o timeout
 exit status 1
@@ -140,7 +139,7 @@ sys 0m0.040s
 <li>PS：另外DNS最多配置3个，我发现有的同学配置了很多个，但其实只有前面3个才生效。</li>
 </ul>
 <p>go也是按标准来实现的：</p>
-<pre><code>        case &quot;nameserver&quot;: // add one name server
+<pre tabindex="0"><code>        case &#34;nameserver&#34;: // add one name server
             if len(f) &gt; 1 &amp;&amp; len(conf.servers) &lt; 3 { // small, but the standard limit
                 // One more check: make sure server name is
                 // just an IP address. Otherwise we need DNS

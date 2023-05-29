@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,20 +36,20 @@
       <time class="post-date" datetime="2018-07-12 00:00:00 UTC">12 Jul 2018</time>
     </header>
 
-    <h1 id="0x01">0X01背景</h1>
+    <h1 id="0x01背景">0X01背景</h1>
 <p>最近通过ansible发布程序，出现线上故障。排查原因：ansible调用shell执行命令完毕后，程序收到<code>SIGHUP</code>信号。程序最开始是支持本地配置reload，后来一些经常变化的配置改成通过zk订阅来进行更新，免去频繁线上reload配置，但<code>SIGHUP</code>信号处理这个分支的代码未兼容zk更新配置，导致问题出现。</p>
 <p>根本问题是为何会收到<code>SIGHUP</code>信号，在用ansible发布前，我都是上机手动执行restart脚本，然后登出，这个过程程序并不会收到<code>SIGHUP</code>信号。改成ansible却出现问题，整个发布playbook简化下来就下面一行命令：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">  tasks:
-
-    - name: start app
-      shell: service.sh restart
-      register: run
-
-    - debug: msg=<span style="color:#e6db74">&#34;{{ run.stdout_lines }}&#34;</span>
-</code></pre></div><p>server.sh脚本的内容可参考这个<a href="https://github.com/fhd/init-script-template/blob/master/template">链接</a>，主要命令是：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo $cmd &gt;&gt; <span style="color:#e6db74">&#34;</span>$stdout_log<span style="color:#e6db74">&#34;</span> 2&gt;&gt; <span style="color:#e6db74">&#34;</span>$stderr_log<span style="color:#e6db74">&#34;</span> &amp;
-</code></pre></div><p>对Linux作业控制了解的同学可能会模糊的知道：当终端断开的时候，程序会收到<code>SIGHUP</code>信号。但诡异的是：手动连接机器执行restart命令，然后登出不会触发<code>SIGHUP</code>信号给后台进程，通过ansible却会。</p>
-<h1 id="0x02-linux">0X02 Linux进程</h1>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>  <span style="color:#f92672">tasks</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#f92672">name</span>: <span style="color:#ae81ff">start app</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">shell</span>: <span style="color:#ae81ff">service.sh restart</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">register</span>: <span style="color:#ae81ff">run</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#f92672">debug</span>: <span style="color:#ae81ff">msg=&#34;{{ run.stdout_lines }}&#34;</span>
+</span></span></code></pre></div><p>server.sh脚本的内容可参考这个<a href="https://github.com/fhd/init-script-template/blob/master/template">链接</a>，主要命令是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo $cmd &gt;&gt; <span style="color:#e6db74">&#34;</span>$stdout_log<span style="color:#e6db74">&#34;</span> 2&gt;&gt; <span style="color:#e6db74">&#34;</span>$stderr_log<span style="color:#e6db74">&#34;</span> &amp;
+</span></span></code></pre></div><p>对Linux作业控制了解的同学可能会模糊的知道：当终端断开的时候，程序会收到<code>SIGHUP</code>信号。但诡异的是：手动连接机器执行restart命令，然后登出不会触发<code>SIGHUP</code>信号给后台进程，通过ansible却会。</p>
+<h1 id="0x02-linux进程">0X02 Linux进程</h1>
 <p>在进一步分析前，先回顾下Linux进程的基本知识。为了更容易理解和实现作业控制，Linux抽象了session和进程组（process group）。记住这几点就行</p>
 <ul>
 <li>session是进程组的集合</li>
@@ -62,7 +62,7 @@
 <p><img src="https://ws1.sinaimg.cn/large/79565610gy1fvcb57mqdpj20qt0nn43l.jpg" alt="image-20180914165128266"></p>
 <h1 id="0x03-sighup">0X03 SIGHUP</h1>
 <p>再梳理一下<code>SIGHUP</code>信号，什么时候程序会收到<code>SIGHUP</code>信号，是谁发送的信号。</p>
-<h2 id="0x01-sighup">0x01 内核发送SIGHUP</h2>
+<h2 id="0x01-内核发送sighup">0x01 内核发送SIGHUP</h2>
 <p>当控制进程失去终端后，内核会发送一个SIGHUP信号给控制进程。失去终端有下面两种情形：</p>
 <ul>
 <li>终端驱动感知连接关闭（物理终端）</li>
@@ -74,87 +74,84 @@
 <li>内核会向该终端会话的前台进程组成员发送SIGHUP信号</li>
 </ul>
 <p>写个简单的程序测试：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> signal
-<span style="color:#f92672">import</span> os
-<span style="color:#f92672">import</span> time
-
-<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">handler</span>(signum, frame):
-    <span style="color:#66d9ef">print</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74">Signal handler called with signal</span><span style="color:#e6db74">&#39;</span>, signum
-
-<span style="color:#66d9ef">print</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">pid:</span><span style="color:#e6db74">%s</span><span style="color:#e6db74">&#34;</span> <span style="color:#f92672">%</span> os<span style="color:#f92672">.</span>getpid()
-signal<span style="color:#f92672">.</span>signal(signal<span style="color:#f92672">.</span>SIGHUP, handler)
-<span style="color:#66d9ef">while</span> <span style="color:#ae81ff">1</span>:
-    time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">10240</span>)
-
-</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># echo $$</span>
-<span style="color:#ae81ff">7394</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test.py</span> 
-pid:7473
-</code></pre></div><p>关闭视窗前，用strace捕获控制进程(shell)<code>7394</code>和前台进程<code>7473</code>的信号。
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> signal
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> os
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> time
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">handler</span>(signum, frame):
+</span></span><span style="display:flex;"><span>    print <span style="color:#e6db74">&#39;Signal handler called with signal&#39;</span>, signum
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>print <span style="color:#e6db74">&#34;pid:</span><span style="color:#e6db74">%s</span><span style="color:#e6db74">&#34;</span> <span style="color:#f92672">%</span> os<span style="color:#f92672">.</span>getpid()
+</span></span><span style="display:flex;"><span>signal<span style="color:#f92672">.</span>signal(signal<span style="color:#f92672">.</span>SIGHUP, handler)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> <span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>    time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">10240</span>)
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># echo $$</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">7394</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test.py </span>
+</span></span><span style="display:flex;"><span>pid:7473
+</span></span></code></pre></div><p>关闭视窗前，用strace捕获控制进程(shell)<code>7394</code>和前台进程<code>7473</code>的信号。
 控制进程收到了来自内核的<code>SIGHUP</code>信号，然后转发给了前台进程组，最后给自己再次发送了<code>SIGHUP</code>信号。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p7394</span>
-Process <span style="color:#ae81ff">7394</span> attached
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>2640381528, ptr<span style="color:#f92672">=</span>0x7fc69d610658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
---- SIGCONT <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGCONT, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>2640381528, ptr<span style="color:#f92672">=</span>0x7fc69d610658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-rt_sigreturn<span style="color:#f92672">(</span><span style="color:#f92672">)</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
-kill<span style="color:#f92672">(</span>4294959823, SIGHUP<span style="color:#f92672">)</span>                <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-rt_sigprocmask<span style="color:#f92672">(</span>SIG_BLOCK, <span style="color:#f92672">[</span>CHLD TSTP TTIN TTOU<span style="color:#f92672">]</span>, <span style="color:#f92672">[</span>CHLD<span style="color:#f92672">]</span>, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-rt_sigprocmask<span style="color:#f92672">(</span>SIG_SETMASK, <span style="color:#f92672">[</span>CHLD<span style="color:#f92672">]</span>, NULL, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-rt_sigaction<span style="color:#f92672">(</span>SIGHUP, <span style="color:#f92672">{</span>SIG_DFL, <span style="color:#f92672">[</span><span style="color:#f92672">]</span>, SA_RESTORER, 0x7fc28611a250<span style="color:#f92672">}</span>, <span style="color:#f92672">{</span>0x456a40, <span style="color:#f92672">[</span>HUP INT ILL TRAP ABRT BUS FPE USR1 SEGV USR2 PIPE ALRM TERM XCPU XFSZ VTALRM SYS<span style="color:#f92672">]</span>, SA_RESTORER, 0x7fc28611a250<span style="color:#f92672">}</span>, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-kill<span style="color:#f92672">(</span>7394, SIGHUP<span style="color:#f92672">)</span>                      <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>7394, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
-+++ killed by SIGHUP +++
-
-</code></pre></div><p><em>这里需要注意shell的kill指令是<code>kill(4294959823, SIGHUP)</code>实际是kill(-7473, SIGHUP)<code>。strace显示出来的是无符号数。无符号数4294959823和-7473的16进制都是</code><strong>0xFFFFE2CF</strong>,这里也说明shell是对整个进程组发送信号</em></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p7394</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">7394</span> attached
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>2640381528, ptr<span style="color:#f92672">=</span>0x7fc69d610658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>--- SIGCONT <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGCONT, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>2640381528, ptr<span style="color:#f92672">=</span>0x7fc69d610658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>rt_sigreturn<span style="color:#f92672">()</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>kill<span style="color:#f92672">(</span>4294959823, SIGHUP<span style="color:#f92672">)</span>                <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>rt_sigprocmask<span style="color:#f92672">(</span>SIG_BLOCK, <span style="color:#f92672">[</span>CHLD TSTP TTIN TTOU<span style="color:#f92672">]</span>, <span style="color:#f92672">[</span>CHLD<span style="color:#f92672">]</span>, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>rt_sigprocmask<span style="color:#f92672">(</span>SIG_SETMASK, <span style="color:#f92672">[</span>CHLD<span style="color:#f92672">]</span>, NULL, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>rt_sigaction<span style="color:#f92672">(</span>SIGHUP, <span style="color:#f92672">{</span>SIG_DFL, <span style="color:#f92672">[]</span>, SA_RESTORER, 0x7fc28611a250<span style="color:#f92672">}</span>, <span style="color:#f92672">{</span>0x456a40, <span style="color:#f92672">[</span>HUP INT ILL TRAP ABRT BUS FPE USR1 SEGV USR2 PIPE ALRM TERM XCPU XFSZ VTALRM SYS<span style="color:#f92672">]</span>, SA_RESTORER, 0x7fc28611a250<span style="color:#f92672">}</span>, 8<span style="color:#f92672">)</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>kill<span style="color:#f92672">(</span>7394, SIGHUP<span style="color:#f92672">)</span>                      <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>7394, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
+</span></span><span style="display:flex;"><span>+++ killed by SIGHUP +++
+</span></span></code></pre></div><p><em>这里需要注意shell的kill指令是<code>kill(4294959823, SIGHUP)</code>实际是kill(-7473, SIGHUP)<code>。strace显示出来的是无符号数。无符号数4294959823和-7473的16进制都是</code><strong>0xFFFFE2CF</strong>,这里也说明shell是对整个进程组发送信号</em></p>
 <p>前台进程分别收到了控制进程和内核发送的<code>SIGHUP</code>信号</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">Process <span style="color:#ae81ff">7473</span> attached
---- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
---- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
---- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>7394, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
-rt_sigreturn<span style="color:#f92672">(</span><span style="color:#f92672">)</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
---- SIGCONT <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGCONT, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-rt_sigreturn<span style="color:#f92672">(</span><span style="color:#f92672">)</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
-</code></pre></div><p>这里可以注意到内核发送<code>SIGHUP</code>信号后，还会发送一个<code>SIGCOUT</code>信号确保进程重新运行。
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>Process <span style="color:#ae81ff">7473</span> attached
+</span></span><span style="display:flex;"><span>--- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>--- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>--- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>7394, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
+</span></span><span style="display:flex;"><span>rt_sigreturn<span style="color:#f92672">()</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>--- SIGCONT <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGCONT, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>607876696, ptr<span style="color:#f92672">=</span>0x7f69243b7658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>rt_sigreturn<span style="color:#f92672">()</span>                          <span style="color:#f92672">=</span> -1 EINTR <span style="color:#f92672">(</span>Interrupted system call<span style="color:#f92672">)</span>
+</span></span></code></pre></div><p>这里可以注意到内核发送<code>SIGHUP</code>信号后，还会发送一个<code>SIGCOUT</code>信号确保进程重新运行。
 内核发送SIGHUP的另一个场景：是当进程组变为<a href="https://stackoverflow.com/questions/31916561/must-a-process-group-have-a-running-leader-process/31919569#31919569">孤儿进程组</a>时，并且进程组中有停止的任务</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">import os
-import signal
-import time
-
-pid <span style="color:#f92672">=</span> os.fork<span style="color:#f92672">(</span><span style="color:#f92672">)</span>
-
-<span style="color:#66d9ef">if</span> pid &gt; 0:
-    time.sleep<span style="color:#f92672">(</span>15<span style="color:#f92672">)</span>
-    print <span style="color:#e6db74">&#34;parent exit&#34;</span>
-<span style="color:#66d9ef">else</span>:
-    pid <span style="color:#f92672">=</span> os.fork<span style="color:#f92672">(</span><span style="color:#f92672">)</span>
-    print <span style="color:#e6db74">&#34;pid is %s&#34;</span> % os.getpid<span style="color:#f92672">(</span><span style="color:#f92672">)</span>
-    <span style="color:#66d9ef">if</span> pid &gt; 0:
-    	<span style="color:#75715e">#进程1进入stop状态</span>
-        os.kill<span style="color:#f92672">(</span>os.getpid<span style="color:#f92672">(</span><span style="color:#f92672">)</span>, signal.SIGSTOP<span style="color:#f92672">)</span>
-    <span style="color:#66d9ef">else</span>:
-    	<span style="color:#75715e">#测试进程2能否收到SIGHUP</span>
-        time.sleep<span style="color:#f92672">(</span>20<span style="color:#f92672">)</span>
-    print <span style="color:#e6db74">&#34;child exit&#34;</span>
-
-
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test2.py</span> 
-pid is <span style="color:#ae81ff">15423</span>
-pid is <span style="color:#ae81ff">15424</span>
-parent exit
-</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e">#  strace -e trace=signal -p15424</span>
-Process <span style="color:#ae81ff">15424</span> attached
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>1655117400, ptr<span style="color:#f92672">=</span>0x7f3962a71658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-+++ killed by SIGHUP +++
-
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p15423</span>
-Process <span style="color:#ae81ff">15423</span> attached
---- stopped by SIGSTOP ---
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, ...<span style="color:#f92672">}</span> ---
-+++ killed by SIGHUP +++
-
-</code></pre></div><h2 id="0x02--shellsigup">0x02  SHELL对SIGUP信号处理</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>import os
+</span></span><span style="display:flex;"><span>import signal
+</span></span><span style="display:flex;"><span>import time
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>pid <span style="color:#f92672">=</span> os.fork<span style="color:#f92672">()</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> pid &gt; 0:
+</span></span><span style="display:flex;"><span>    time.sleep<span style="color:#f92672">(</span>15<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    print <span style="color:#e6db74">&#34;parent exit&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>    pid <span style="color:#f92672">=</span> os.fork<span style="color:#f92672">()</span>
+</span></span><span style="display:flex;"><span>    print <span style="color:#e6db74">&#34;pid is %s&#34;</span> % os.getpid<span style="color:#f92672">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> pid &gt; 0:
+</span></span><span style="display:flex;"><span>    	<span style="color:#75715e">#进程1进入stop状态</span>
+</span></span><span style="display:flex;"><span>        os.kill<span style="color:#f92672">(</span>os.getpid<span style="color:#f92672">()</span>, signal.SIGSTOP<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>    	<span style="color:#75715e">#测试进程2能否收到SIGHUP</span>
+</span></span><span style="display:flex;"><span>        time.sleep<span style="color:#f92672">(</span>20<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    print <span style="color:#e6db74">&#34;child exit&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test2.py </span>
+</span></span><span style="display:flex;"><span>pid is <span style="color:#ae81ff">15423</span>
+</span></span><span style="display:flex;"><span>pid is <span style="color:#ae81ff">15424</span>
+</span></span><span style="display:flex;"><span>parent exit
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e">#  strace -e trace=signal -p15424</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">15424</span> attached
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>1655117400, ptr<span style="color:#f92672">=</span>0x7f3962a71658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span>+++ killed by SIGHUP +++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p15423</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">15423</span> attached
+</span></span><span style="display:flex;"><span>--- stopped by SIGSTOP ---
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_KERNEL, ...<span style="color:#f92672">}</span> ---
+</span></span><span style="display:flex;"><span>+++ killed by SIGHUP +++
+</span></span></code></pre></div><h2 id="0x02--shell对sigup信号处理">0x02  SHELL对SIGUP信号处理</h2>
 <p>shell会发送<code>SIGHUP</code>信号给前台进程，对后台进程的处理分两种case：</p>
 <ul>
 <li>
@@ -165,27 +162,27 @@ Process <span style="color:#ae81ff">15423</span> attached
 </li>
 </ul>
 <p>正常logout后， 后台进程还在，说明shell没有发送SIGHUP信号。sleep命令连接的终端被关闭了（pts/13 - ?）。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># sleep 10240 &amp;</span>
-<span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#ae81ff">9309</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># ps -ef | grep 9309</span>
-root      <span style="color:#ae81ff">9309</span>  <span style="color:#ae81ff">9117</span>  <span style="color:#ae81ff">0</span> 12:44 pts/13   00:00:00 sleep <span style="color:#ae81ff">10240</span>
-root      <span style="color:#ae81ff">9316</span>  <span style="color:#ae81ff">9117</span>  <span style="color:#ae81ff">0</span> 12:45 pts/13   00:00:00 grep --color<span style="color:#f92672">=</span>auto <span style="color:#ae81ff">9309</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># exit</span>
-<span style="color:#75715e"># login</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># ps -ef | grep 9309</span>
-root      <span style="color:#ae81ff">9309</span>     <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span> 12:44 ?        00:00:00 sleep <span style="color:#ae81ff">10240</span>
-root      <span style="color:#ae81ff">9374</span>  <span style="color:#ae81ff">9344</span>  <span style="color:#ae81ff">0</span> 12:45 pts/12   00:00:00 grep --color<span style="color:#f92672">=</span>auto <span style="color:#ae81ff">9309</span>
-</code></pre></div><p>关闭视窗，内核发送<code>SIGHUP</code>给控制进程，然后转发给后台进程。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># echo $$</span>
-<span style="color:#ae81ff">10599</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># sleep 10240 &amp;</span>
-<span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#ae81ff">10622</span>
-<span style="color:#75715e"># 关闭视窗</span>
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p10622</span>
-Process <span style="color:#ae81ff">10622</span> attached
---- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>10599, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
-+++ killed by SIGHUP +++
-</code></pre></div><p>看一下bash的文档：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># sleep 10240 &amp;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#ae81ff">9309</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># ps -ef | grep 9309</span>
+</span></span><span style="display:flex;"><span>root      <span style="color:#ae81ff">9309</span>  <span style="color:#ae81ff">9117</span>  <span style="color:#ae81ff">0</span> 12:44 pts/13   00:00:00 sleep <span style="color:#ae81ff">10240</span>
+</span></span><span style="display:flex;"><span>root      <span style="color:#ae81ff">9316</span>  <span style="color:#ae81ff">9117</span>  <span style="color:#ae81ff">0</span> 12:45 pts/13   00:00:00 grep --color<span style="color:#f92672">=</span>auto <span style="color:#ae81ff">9309</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># exit</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># login</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># ps -ef | grep 9309</span>
+</span></span><span style="display:flex;"><span>root      <span style="color:#ae81ff">9309</span>     <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span> 12:44 ?        00:00:00 sleep <span style="color:#ae81ff">10240</span>
+</span></span><span style="display:flex;"><span>root      <span style="color:#ae81ff">9374</span>  <span style="color:#ae81ff">9344</span>  <span style="color:#ae81ff">0</span> 12:45 pts/12   00:00:00 grep --color<span style="color:#f92672">=</span>auto <span style="color:#ae81ff">9309</span>
+</span></span></code></pre></div><p>关闭视窗，内核发送<code>SIGHUP</code>给控制进程，然后转发给后台进程。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># echo $$</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">10599</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># sleep 10240 &amp;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#ae81ff">10622</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 关闭视窗</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># strace -e trace=signal -p10622</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">10622</span> attached
+</span></span><span style="display:flex;"><span>--- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>10599, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
+</span></span><span style="display:flex;"><span>+++ killed by SIGHUP +++
+</span></span></code></pre></div><p>看一下bash的文档：</p>
 <blockquote>
 <p>​	The  shell exits by default upon receipt of a SIGHUP.  Before exiting, an interactive shell resends the SIGHUP to all jobs, running or stopped.  Stopped jobs are sent SIGCONT to ensure that they receive the SIGHUP.  To prevent the shell from sending the signal to a particular job, it should be removed from the jobs table with the disown builtin (see SHELL BUILTIN COMMANDS below) or marked to not receive SIGHUP using disown -h.</p>
 <p>​       If the huponexit shell option has been set with shopt, bash sends a SIGHUP to all jobs when an interactive login shell exits.</p>
@@ -195,43 +192,42 @@ Process <span style="color:#ae81ff">10622</span> attached
 <p>所以如果通过shopt设置了huponexit选项<code>shopt -s huponexit</code>，case1和case2的效果是一样的。</p>
 <p>这里有两点需要注意：</p>
 <p>当shell启动的进程退出后，进程组会从shell的任务列表删去，fork出来的子进程不会收到shell的SIGHUP信号。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
-</span><span style="color:#75715e"></span>sleep <span style="color:#ae81ff">10240</span> &amp;
-</code></pre></div><p>如果关闭视窗，sleep命令依然会在后台运行。所以如果不是shell直接fork启动，而是在脚本里面启动的话，是不需要<code>nohup</code>的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e">#!/bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>sleep <span style="color:#ae81ff">10240</span> &amp;
+</span></span></code></pre></div><p>如果关闭视窗，sleep命令依然会在后台运行。所以如果不是shell直接fork启动，而是在脚本里面启动的话，是不需要<code>nohup</code>的。</p>
 <p>如果进程改变了进程组ID，并且进程组ID不是由此shell创建的，也不会收到SIGHUP信号。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># cat test3.py</span> 
-import os,time
-
-def pp<span style="color:#f92672">(</span>tip<span style="color:#f92672">)</span>:
-    print <span style="color:#e6db74">&#34;%s pid:%s, ppid:%s, pgid:%s&#34;</span> % <span style="color:#f92672">(</span>tip, os.getpid<span style="color:#f92672">(</span><span style="color:#f92672">)</span>, os.getppid<span style="color:#f92672">(</span><span style="color:#f92672">)</span>, os.getpgid<span style="color:#f92672">(</span>os.getpid<span style="color:#f92672">(</span><span style="color:#f92672">)</span><span style="color:#f92672">)</span><span style="color:#f92672">)</span>
-
-<span style="color:#66d9ef">if</span> os.fork<span style="color:#f92672">(</span><span style="color:#f92672">)</span> &gt; 0:
-    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;parent&#34;</span><span style="color:#f92672">)</span>
-    time.sleep<span style="color:#f92672">(</span>10240<span style="color:#f92672">)</span>
-<span style="color:#66d9ef">else</span>:
-    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;child&#34;</span><span style="color:#f92672">)</span>
-    os.setpgid<span style="color:#f92672">(</span>0, 0<span style="color:#f92672">)</span>
-    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;child&#34;</span><span style="color:#f92672">)</span>
-    time.sleep<span style="color:#f92672">(</span>10240<span style="color:#f92672">)</span>
-    
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test3.py</span> 
-parent pid:18292, ppid:18260, pgid:18292
-child pid:18293, ppid:18292, pgid:18292
-child pid:18293, ppid:18292, pgid:18293 <span style="color:#75715e">#pgid变化</span>
-
-<span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e">#  strace -e trace=signal -p18292 -p 18293</span>
-Process <span style="color:#ae81ff">18292</span> attached
-Process <span style="color:#ae81ff">18293</span> attached
-<span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-<span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-<span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">=</span><span style="color:#f92672">{</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}</span><span style="color:#f92672">}</span> ---
-<span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>18260, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
-<span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> +++ killed by SIGHUP +++
-
-</code></pre></div><p>改变了进程组ID的子进程没有收到<code>SIGHUP</code>信号。
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># cat test3.py </span>
+</span></span><span style="display:flex;"><span>import os,time
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>def pp<span style="color:#f92672">(</span>tip<span style="color:#f92672">)</span>:
+</span></span><span style="display:flex;"><span>    print <span style="color:#e6db74">&#34;%s pid:%s, ppid:%s, pgid:%s&#34;</span> % <span style="color:#f92672">(</span>tip, os.getpid<span style="color:#f92672">()</span>, os.getppid<span style="color:#f92672">()</span>, os.getpgid<span style="color:#f92672">(</span>os.getpid<span style="color:#f92672">()))</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> os.fork<span style="color:#f92672">()</span> &gt; 0:
+</span></span><span style="display:flex;"><span>    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;parent&#34;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    time.sleep<span style="color:#f92672">(</span>10240<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;child&#34;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    os.setpgid<span style="color:#f92672">(</span>0, 0<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    pp<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;child&#34;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    time.sleep<span style="color:#f92672">(</span>10240<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e"># python test3.py </span>
+</span></span><span style="display:flex;"><span>parent pid:18292, ppid:18260, pgid:18292
+</span></span><span style="display:flex;"><span>child pid:18293, ppid:18292, pgid:18292
+</span></span><span style="display:flex;"><span>child pid:18293, ppid:18292, pgid:18293 <span style="color:#75715e">#pgid变化</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>root@VM_137_43_centos ~<span style="color:#f92672">]</span><span style="color:#75715e">#  strace -e trace=signal -p18292 -p 18293</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">18292</span> attached
+</span></span><span style="display:flex;"><span>Process <span style="color:#ae81ff">18293</span> attached
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGWINCH <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGWINCH, si_code<span style="color:#f92672">=</span>SI_KERNEL, si_value<span style="color:#f92672">={</span>int<span style="color:#f92672">=</span>3431224920, ptr<span style="color:#f92672">=</span>0x7fbfcc845658<span style="color:#f92672">}}</span> ---
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> --- SIGHUP <span style="color:#f92672">{</span>si_signo<span style="color:#f92672">=</span>SIGHUP, si_code<span style="color:#f92672">=</span>SI_USER, si_pid<span style="color:#f92672">=</span>18260, si_uid<span style="color:#f92672">=</span>0<span style="color:#f92672">}</span> ---
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>pid 18292<span style="color:#f92672">]</span> +++ killed by SIGHUP +++
+</span></span></code></pre></div><p>改变了进程组ID的子进程没有收到<code>SIGHUP</code>信号。
 结合上面shell对整个进程组发送信号，说明shell作业控制是基于进程组，进程组是job的抽象。</p>
 <p>PS 这里我只是测试了bash的表现情况，各家shell可能不一致，但基本一致。</p>
-<h2 id="0x03--sighup">0x03  SIGHUP总结</h2>
+<h2 id="0x03--sighup总结">0x03  SIGHUP总结</h2>
 <p>什么时候内核会发送SIGHUP信号</p>
 <ul>
 <li>当终端关闭时，发送SIGHUP信号给终端控制进程（通常是shell）</li>
@@ -245,37 +241,36 @@ Process <span style="color:#ae81ff">18293</span> attached
 </ul>
 <h1 id="0x04-ansible">0X04 Ansible</h1>
 <p>来看下Ansible发布到底做了什么。playbook测试，为了执行完test.sh后，sleep 60秒，保留现场。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">
-  tasks:
-
-    - name: start app
-      shell: /root/test.sh <span style="color:#75715e">&amp;&amp;</span> sleep <span style="color:#ae81ff">60</span>
-      register: run
-
-    - debug: msg=<span style="color:#e6db74">&#34;{{ run.stdout_lines }}&#34;</span>
-</code></pre></div><pre><code>#!/bin/sh
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">tasks</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#f92672">name</span>: <span style="color:#ae81ff">start app</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">shell</span>: <span style="color:#ae81ff">/root/test.sh &amp;&amp; sleep 60</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">register</span>: <span style="color:#ae81ff">run</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#f92672">debug</span>: <span style="color:#ae81ff">msg=&#34;{{ run.stdout_lines }}&#34;</span>
+</span></span></code></pre></div><pre tabindex="0"><code>#!/bin/sh
 # test.sh
 
 sleep 10240 &gt;&gt; /dev/null 2&gt;&gt; /dev/null &amp;
 pid=$!
-echo &quot;$pid success...&quot;
+echo &#34;$pid success...&#34;
 </code></pre><p>可以看到shell命令是编码成python脚本，然后在python脚本fork执行shell命令。最重要的因为是以非交互式shell运行的命令，所有的命令都归属于同一个进程组。前面说了连接断开后，内核会发送<code>SIGHUP</code>信号给前台进程组。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">UID        PID  PPID  PGID   SID  C STIME TTY          TIME CMD
-root     <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10057</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /bin/sh -c /usr/bin/python /root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/command.py; rm -rf <span style="color:#e6db74">&#34;/root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/&#34;</span> &gt; /dev/null 2&gt;&amp;<span style="color:#ae81ff">1</span> 
- sleep <span style="color:#ae81ff">0</span>
-root     <span style="color:#ae81ff">10085</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /usr/bin/python /root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/command.py
-root     <span style="color:#ae81ff">10086</span> <span style="color:#ae81ff">10085</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /usr/bin/python /tmp/ansible_P3TTAF/ansible_module_command.py 
-root     <span style="color:#ae81ff">10087</span> <span style="color:#ae81ff">10086</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /bin/sh -c /root/test.sh <span style="color:#f92672">&amp;&amp;</span> sleep <span style="color:#ae81ff">60</span>
-root     <span style="color:#ae81ff">10089</span>     <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 sleep <span style="color:#ae81ff">10240</span>
-
-</code></pre></div><p>playbook执行完后，10089进程收到了来自内核的<code>SIGHUP</code>信号。</p>
-<pre><code>[pid 10089] +++ exited with 0 +++
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>UID        PID  PPID  PGID   SID  C STIME TTY          TIME CMD
+</span></span><span style="display:flex;"><span>root     <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10057</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /bin/sh -c /usr/bin/python /root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/command.py; rm -rf <span style="color:#e6db74">&#34;/root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/&#34;</span> &gt; /dev/null 2&gt;&amp;<span style="color:#ae81ff">1</span> 
+</span></span><span style="display:flex;"><span> sleep <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>root     <span style="color:#ae81ff">10085</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /usr/bin/python /root/.ansible/tmp/ansible-tmp-1537085564.57-12697012229826/command.py
+</span></span><span style="display:flex;"><span>root     <span style="color:#ae81ff">10086</span> <span style="color:#ae81ff">10085</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /usr/bin/python /tmp/ansible_P3TTAF/ansible_module_command.py 
+</span></span><span style="display:flex;"><span>root     <span style="color:#ae81ff">10087</span> <span style="color:#ae81ff">10086</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 /bin/sh -c /root/test.sh <span style="color:#f92672">&amp;&amp;</span> sleep <span style="color:#ae81ff">60</span>
+</span></span><span style="display:flex;"><span>root     <span style="color:#ae81ff">10089</span>     <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">10069</span> <span style="color:#ae81ff">10069</span>  <span style="color:#ae81ff">0</span> 16:12 pts/8    00:00:00 sleep <span style="color:#ae81ff">10240</span>
+</span></span></code></pre></div><p>playbook执行完后，10089进程收到了来自内核的<code>SIGHUP</code>信号。</p>
+<pre tabindex="0"><code>[pid 10089] +++ exited with 0 +++
 --- SIGHUP {si_signo=SIGHUP, si_code=SI_KERNEL, si_value={int=0, ptr=0x7fa200000000}} ---
 +++ killed by SIGHUP +++
 </code></pre><p>到这里就真相大白了。解决办法：playbook里面调用setsid创建新会话。<code>setsid /root/test.sh</code></p>
-<h1 id="0x05-">0X05 总结思考</h1>
+<h1 id="0x05-总结思考">0X05 总结思考</h1>
 <p>线上操作保持敬畏之心。批量操作一定要灰度，观察验证、观察验证、观察验证。</p>
-<h1 id="0x06-">0X06 参考</h1>
+<h1 id="0x06-参考">0X06 参考</h1>
 <p>[0x01]The Linux Programming Interface<br>
 [0x02]https://stackoverflow.com/questions/4298741/how-bash-handles-the-jobs-when-logout <br>
 [0x03]https://stackoverflow.com/questions/32780706/does-linux-kill-background-processes-if-we-close-the-terminal-from-which-it-has</p>

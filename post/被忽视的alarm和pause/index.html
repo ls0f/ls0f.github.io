@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -43,7 +43,7 @@ Alarm和Pause就是其中之列。</p>
 <h2 id="alarm">Alarm</h2>
 <p>有时候我们需要给程序加运行时间控制，很多人会用ps来检测或者用timeout命令来运行。<br>
 Alarm函数也适合干这个事情。</p>
-<pre><code>import signal
+<pre tabindex="0"><code>import signal
 
 signal.alarm(1)
 
@@ -54,7 +54,7 @@ while 1:
 <h2 id="pause">Pause</h2>
 <p>有时写程序调试时，希望运行完后不要退出，保留现场，这个时候可以用pause，使程序进入sleep状态。
 当调试完毕的时候，再crt+c退出。</p>
-<pre><code>import signal
+<pre tabindex="0"><code>import signal
 # debug here
 signal.pause()
 </code></pre><h2 id="links">Links</h2>

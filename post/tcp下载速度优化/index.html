@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,12 +36,12 @@
       <time class="post-date" datetime="2021-02-01 00:00:00 UTC">01 Feb 2021</time>
     </header>
 
-    <h1 id="heading">背景</h1>
+    <h1 id="背景">背景</h1>
 <p>新上线的一批天津机房机器，从深圳机房下载大文件速度只能到40MB/s，不符合预期需要排查</p>
-<h1 id="heading1">解决</h1>
-<h3 id="rtt">测试RTT</h3>
+<h1 id="解决">解决</h1>
+<h3 id="测试rtt">测试RTT</h3>
 <p>用ping测试RTT，天津到深圳稳定35ms左右</p>
-<pre><code>64 bytes from x.x.x.x: icmp_seq=1 ttl=54 time=35.3 ms
+<pre tabindex="0"><code>64 bytes from x.x.x.x: icmp_seq=1 ttl=54 time=35.3 ms
 64 bytes from x.x.x.x: icmp_seq=2 ttl=54 time=35.3 ms
 64 bytes from x.x.x.x: icmp_seq=3 ttl=54 time=35.3 ms
 64 bytes from x.x.x.x: icmp_seq=4 ttl=54 time=35.3 ms
@@ -49,11 +49,11 @@
 --- x.x.x.x ping statistics ---
 4 packets transmitted, 4 received, 0% packet loss, time 3004ms
 rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms
-</code></pre><h3 id="udp">测试UDP带宽</h3>
+</code></pre><h3 id="测试udp带宽">测试UDP带宽</h3>
 <p>服务端运行<code>iperf3 -s -p 5001</code></p>
 <p>客户端运行<code>iperf3 -c x.x.x.x -p 5001 -i 2 -t 30 -u -b 10G</code><br>
 显示单连接吞吐量可到5.18Gb/s，说明跨城带宽是没有问题的。</p>
-<pre><code>[ ID] Interval           Transfer     Bandwidth       Total Datagrams
+<pre tabindex="0"><code>[ ID] Interval           Transfer     Bandwidth       Total Datagrams
 [  4]   0.00-2.00   sec  1.15 GBytes  4.96 Gbits/sec  151272  
 [  4]   2.00-4.00   sec  1.21 GBytes  5.19 Gbits/sec  158350  
 [  4]   4.00-6.00   sec  1.21 GBytes  5.18 Gbits/sec  158193  
@@ -73,10 +73,10 @@ rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms
 [ ID] Interval           Transfer     Bandwidth       Jitter    Lost/Total Datagrams
 [  4]   0.00-30.00  sec  18.1 GBytes  5.18 Gbits/sec  1.149 ms  0/1 (0%)  
 [  4] Sent 1 datagrams
-</code></pre><h3 id="tcp">测试TCP下载</h3>
+</code></pre><h3 id="测试tcp下载">测试TCP下载</h3>
 <p>客户端运行<code>iperf3 -c x.x.x.x -p 5001 -i 2 -t 30 -R</code><br>
 单连接吞吐量只能到30Mb/s，不符合预期</p>
-<pre><code>[ ID] Interval           Transfer     Bandwidth
+<pre tabindex="0"><code>[ ID] Interval           Transfer     Bandwidth
 [  4]   0.00-2.00   sec  41.7 MBytes   175 Mbits/sec                  
 [  4]   2.00-4.00   sec  55.9 MBytes   234 Mbits/sec                  
 [  4]   4.00-6.00   sec  60.5 MBytes   254 Mbits/sec                  
@@ -97,7 +97,7 @@ rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms
 [  4]   0.00-30.00  sec  1.05 GBytes   300 Mbits/sec   33             sender
 [  4]   0.00-30.00  sec  1.05 GBytes   299 Mbits/sec                  receiver
 </code></pre><p>服务端日志中可以到Cwnd是缓慢增加到1.51MB后就不变化了。</p>
-<pre><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+<pre tabindex="0"><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
 [  5]   0.00-1.00   sec  18.0 MBytes   151 Mbits/sec   33    865 KBytes       
 [  5]   1.00-2.00   sec  25.0 MBytes   209 Mbits/sec    0    956 KBytes       
 [  5]   2.00-3.00   sec  27.4 MBytes   230 Mbits/sec    0   1023 KBytes       
@@ -120,19 +120,19 @@ rtt min/avg/max/mdev = 35.332/35.344/35.355/0.133 ms
 [  5]  19.00-20.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes       
 [  5]  20.00-21.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes       
 [  5]  21.00-22.00  sec  42.5 MBytes   357 Mbits/sec    0   1.51 MBytes  
-</code></pre><h3 id="heading2">调参</h3>
+</code></pre><h3 id="调参">调参</h3>
 <blockquote>
 <p>TCP下载速度 = Cwnd / RTT <br>
 Cwnd = Min(拥塞窗口,接收窗口)</p>
 </blockquote>
 <p>套用公式 1.51MB/35*1000 = 43MB，符合iperf3的日志结果。</p>
 <p>查看客户端的TCP读缓冲区大小</p>
-<pre><code>root@admin:~# sysctl -a | grep tcp_rmem
+<pre tabindex="0"><code>root@admin:~# sysctl -a | grep tcp_rmem
 net.ipv4.tcp_rmem = 4096        87380   6291456
 </code></pre><p>调大客户端的TCPC读缓冲区大小(会增大TCP的接收窗口)<br>
 <code>sysctl -w net.ipv4.tcp_rmem='4096 2621440 16777216'</code></p>
 <p>再次用iperf压测，单连速度可以到100MB/s，符合业务需求。</p>
-<pre><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+<pre tabindex="0"><code>[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
 [  5]   0.00-1.00   sec  49.9 MBytes   418 Mbits/sec  465   2.20 MBytes       
 [  5]   1.00-2.00   sec  62.5 MBytes   524 Mbits/sec    0   2.38 MBytes       
 [  5]   2.00-3.00   sec  68.8 MBytes   577 Mbits/sec    0   2.53 MBytes       

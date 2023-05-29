@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,11 +36,11 @@
       <time class="post-date" datetime="2021-07-16 00:00:00 UTC">16 Jul 2021</time>
     </header>
 
-    <h1 id="heading">背景</h1>
+    <h1 id="背景">背景</h1>
 <p>线上Nginx服务突然报错，日志打印Connection timed out</p>
-<h1 id="heading1">排查</h1>
+<h1 id="排查">排查</h1>
 <p>首先看一下完整日志</p>
-<pre><code>connect() failed (110: Connection timed out) while connecting to upstream ....
+<pre tabindex="0"><code>connect() failed (110: Connection timed out) while connecting to upstream ....
 </code></pre><p>看来是熟悉的味道，和上次的问题一样<a href="/post/tcp%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6/">TCP连接超时</a></p>
 <p>于是和对方业务沟通：我们出现SYN丢包了，得检查你们TCP连接队列满了是否有丢包，^_^</p>
 <p>对方有5台机器，发现有一台机器确实有SYN丢包问题:</p>
@@ -51,7 +51,7 @@
 <code>客户端 -&gt; 我方Nginx -&gt; CLB -&gt;对方Nginx -&gt;对方后台服务</code></p>
 <p>仔细想想，CLB后面挂载的是对方Nginx，这货不太可能出现连接队列满的情况。 难道是网络或者CLB有丢包？</p>
 <p>于是和CLB助手沟通丢包问题，对方直接抛出了文档:</p>
-<pre><code>关于同一个客户端通过不同的中间节点访问同一个后端 RS 的同一个端口时串流问题的说明
+<pre tabindex="0"><code>关于同一个客户端通过不同的中间节点访问同一个后端 RS 的同一个端口时串流问题的说明
 问题现象
 同一个客户端在同一时刻，通过不同的中间节点访问同一个 RS 的同一个端口会出现串流现象。具体场景如下：
 

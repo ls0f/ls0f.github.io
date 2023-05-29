@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -48,8 +48,8 @@
 <p>看代码，requests的请求发送以及连接池其实是urllib3来提供的。</p>
 <p>首先看下如何从连接池获取可用连接的:
 <a href="https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L237">https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L237</a></p>
-<pre><code>    def _get_conn(self, timeout=None):
-        &quot;&quot;&quot;
+<pre tabindex="0"><code>    def _get_conn(self, timeout=None):
+        &#34;&#34;&#34;
         Get a connection. Will return a pooled connection if one is available.
         If no connections are available and :prop:`.block` is ``False``, then a
         fresh connection is returned.
@@ -57,27 +57,27 @@
             Seconds to wait before giving up and raising
             :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
             :prop:`.block` is ``True``.
-        &quot;&quot;&quot;
+        &#34;&#34;&#34;
         conn = None
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
-            raise ClosedPoolError(self, &quot;Pool is closed.&quot;)
+            raise ClosedPoolError(self, &#34;Pool is closed.&#34;)
 
         except queue.Empty:
             if self.block:
                 raise EmptyPoolError(
                     self,
-                    &quot;Pool reached maximum size and no more connections are allowed.&quot;,
+                    &#34;Pool reached maximum size and no more connections are allowed.&#34;,
                 )
-            pass  # Oh well, we'll create a new connection then
+            pass  # Oh well, we&#39;ll create a new connection then
 
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
-            log.debug(&quot;Resetting dropped connection: %s&quot;, self.host)
+            log.debug(&#34;Resetting dropped connection: %s&#34;, self.host)
             conn.close()
-            if getattr(conn, &quot;auto_open&quot;, 1) == 0:
+            if getattr(conn, &#34;auto_open&#34;, 1) == 0:
                 # This is a proxied connection that has been mutated by
                 # httplib._tunnel() and cannot be reused (since it would
                 # attempt to bypass the proxy)
@@ -85,10 +85,10 @@
 
         return conn or self._new_conn()
 </code></pre><p>关键点在 <a href="https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L265">https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L265</a></p>
-<pre><code>        if conn and is_connection_dropped(conn):
-            log.debug(&quot;Resetting dropped connection: %s&quot;, self.host)
+<pre tabindex="0"><code>        if conn and is_connection_dropped(conn):
+            log.debug(&#34;Resetting dropped connection: %s&#34;, self.host)
             conn.close()
-            if getattr(conn, &quot;auto_open&quot;, 1) == 0:
+            if getattr(conn, &#34;auto_open&#34;, 1) == 0:
                 # This is a proxied connection that has been mutated by
                 # httplib._tunnel() and cannot be reused (since it would
                 # attempt to bypass the proxy)
@@ -97,21 +97,21 @@
         return conn or self._new_conn()
 </code></pre><p>取出连接后，会去判断连接是否断掉，我们看下他如何判断的：
 <a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/connection.py#L7">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/connection.py#L7</a></p>
-<pre><code>def is_connection_dropped(conn):  # Platform-specific
-    &quot;&quot;&quot;
+<pre tabindex="0"><code>def is_connection_dropped(conn):  # Platform-specific
+    &#34;&#34;&#34;
     Returns True if the connection is dropped and should be closed.
     :param conn:
         :class:`httplib.HTTPConnection` object.
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
-    &quot;&quot;&quot;
-    sock = getattr(conn, &quot;sock&quot;, False)
+    &#34;&#34;&#34;
+    sock = getattr(conn, &#34;sock&#34;, False)
     if sock is False:  # Platform-specific: AppEngine
         return False
     if sock is None:  # Connection already closed (such as by httplib).
         return True
     try:
-        # Returns True if readable, which here means it's been dropped
+        # Returns True if readable, which here means it&#39;s been dropped
         return wait_for_read(sock, timeout=0.0)
     except NoWayToWaitForSocketError:  # Platform-specific: AppEngine
         return False
@@ -119,9 +119,9 @@
 <a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L127">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L127</a>
 我们以select_wait_for_socket为例：
 <a href="https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L71">https://github.com/urllib3/urllib3/blob/bffbde720c060c396d6b3bc396579d4f98c8fa70/src/urllib3/util/wait.py#L71</a></p>
-<pre><code>def select_wait_for_socket(sock, read=False, write=False, timeout=None):
+<pre tabindex="0"><code>def select_wait_for_socket(sock, read=False, write=False, timeout=None):
     if not read and not write:
-        raise RuntimeError(&quot;must specify at least one of read=True, write=True&quot;)
+        raise RuntimeError(&#34;must specify at least one of read=True, write=True&#34;)
     rcheck = []
     wcheck = []
     if read:
@@ -130,7 +130,7 @@
         wcheck.append(sock)
     # When doing a non-blocking connect, most systems signal success by
     # marking the socket writable. Windows, though, signals success by marked
-    # it as &quot;exceptional&quot;. We paper over the difference by checking the write
+    # it as &#34;exceptional&#34;. We paper over the difference by checking the write
     # sockets for both conditions. (The stdlib selectors module does the same
     # thing.)
     fn = partial(select.select, rcheck, wcheck, wcheck)

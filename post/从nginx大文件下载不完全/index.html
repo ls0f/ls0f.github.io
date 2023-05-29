@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,26 +36,26 @@
       <time class="post-date" datetime="2020-04-10 00:00:00 UTC">10 Apr 2020</time>
     </header>
 
-    <h1 id="heading">背景</h1>
+    <h1 id="背景">背景</h1>
 <p>业务反馈下载一个7GB左右的大文件，总是下载一个到1GB左右就断掉了。</p>
-<h1 id="heading1">分析</h1>
+<h1 id="分析">分析</h1>
 <p>在机器上重试，发现能够稳定重现。</p>
 <p><img src="/images/%E4%B8%8B%E8%BD%BD1GB%E5%A4%B1%E8%B4%A5.jpeg" alt="img"></p>
 <p>用curl去下载：</p>
 <p><img src="/images/curl%E4%B8%8B%E8%BD%BD%E5%A4%B1%E8%B4%A5%E6%8F%90%E7%A4%BA.jpeg" alt="img"></p>
 <p>用IDC机器下载没问题，但是远程办公下载了几次都是失败，怀疑和下载速度相关。</p>
 <p>梳理下调用链路：</p>
-<pre><code>客户端 ---&gt; 我方Nginx ---&gt; 我方后台服务 ---&gt; 被调方Nginx ---&gt; 被调用Tomcat
+<pre tabindex="0"><code>客户端 ---&gt; 我方Nginx ---&gt; 我方后台服务 ---&gt; 被调方Nginx ---&gt; 被调用Tomcat
 </code></pre><p>期间怀疑是不是某个网关有问题，把连接断掉了。</p>
 <p>但在我方后台服务的日志中发现了下面这行：</p>
-<pre><code>httputil: ReverseProxy read error during body copy: unexpected EOF
+<pre tabindex="0"><code>httputil: ReverseProxy read error during body copy: unexpected EOF
 </code></pre><p>说明我方服务是没问题的，被调方的Nginx关掉了连接。</p>
 <p>为了简化问题，我直接访问被调方Nginx，然后限速下载，问题重现了：</p>
 <p><img src="/images/%E9%99%90%E9%80%9F%E4%B8%8B%E8%BD%BD%E5%A4%B1%E8%B4%A5.jpeg" alt="img"></p>
 <p>在机器上抓包，发现确实是对方Nginx关闭了连接。</p>
 <p><img src="/images/%E5%AF%B9%E6%96%B9Nginx%E5%85%B3%E9%97%AD%E8%BF%9E%E6%8E%A5.jpeg" alt="img"></p>
 <p>对方Nginx的errlog里面看到下面日志：</p>
-<pre><code>2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&quot;
+<pre tabindex="0"><code>2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&#34;
 </code></pre><p>说明是Tomcat关掉了连接。</p>
 <p>至此问题有点卡主了，为什么Tomcat会关闭掉连接呢？<br>
 因为没有对方机器权限，调试看日志抓包比来比较麻烦，问题暂且搁置了。</p>
@@ -73,11 +73,11 @@
 <p>解决方案是：</p>
 <blockquote>
 <ul>
-<li>Tune proxy_max_temp_file_size. Consider either configuring the limit above the size of all expected responses, or small enough for your backend to don't time out. In particular, proxy_max_temp_file_size 0; might be a good choice when proxying large files.</li>
+<li>Tune proxy_max_temp_file_size. Consider either configuring the limit above the size of all expected responses, or small enough for your backend to don&rsquo;t time out. In particular, proxy_max_temp_file_size 0; might be a good choice when proxying large files.</li>
 <li>Tune your backend timeouts appropriately.</li>
 </ul>
 </blockquote>
-<h1 id="heading2">参考</h1>
+<h1 id="参考">参考</h1>
 <ul>
 <li><a href="https://www.jfrog.com/jira/browse/RTFACT-16743">https://www.jfrog.com/jira/browse/RTFACT-16743</a></li>
 <li><a href="https://trac.nginx.org/nginx/ticket/1472">https://trac.nginx.org/nginx/ticket/1472</a></li>

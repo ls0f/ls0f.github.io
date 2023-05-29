@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -42,12 +42,12 @@
 <p>首先问题的前提是电脑和外部有进行连接，讨论已经建立的连接才有意义。<br>
 新建连接看断网时间长短决定握手成功与否。</p>
 <p>写个简单的发包程序，为了便于单步调试，直接用python：</p>
-<pre><code>import socket
+<pre tabindex="0"><code>import socket
 import sys
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                 
 s.connect((sys.argv[1] , int(sys.argv[2])))
-s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+s.sendall(&#34;GET /404 HTTP/1.0\r\n\r\n&#34;)
 while True:
     line = s.recv(4096)
     if line:
@@ -58,45 +58,45 @@ s.close()
 </code></pre><p>直接pdb模式运行：<code>python -m pdb  scripts/test_socket.py xx 8000</code>。<br>
 目标机器运行<code>python -m SimpleHTTPServer</code>监听8000端口。<br>
 当connect成功后，在目标机器上利用iptables模拟断网：</p>
-<pre><code>iptables -A INPUT -p tcp  --dport 8000 -j DROP
+<pre tabindex="0"><code>iptables -A INPUT -p tcp  --dport 8000 -j DROP
 </code></pre><p><code>sendall</code>函数将数据写入tcp协议栈缓冲区后，卡在recv函数，本地抓包：
 <img src="/images/connect%E5%90%8E%E6%96%AD%E6%8E%89%E8%BF%9E%E6%8E%A5.jpeg" alt="img">
 重传一定次数后，会发送RST给目标机器断掉连接，recv函数抛出timeout错误：</p>
-<pre><code>-&gt; s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+<pre tabindex="0"><code>-&gt; s.sendall(&#34;GET /404 HTTP/1.0\r\n\r\n&#34;)
 (Pdb) c
 Traceback (most recent call last):
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1314, in main
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&#34;, line 1314, in main
     pdb._runscript(mainpyfile)
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1233, in _runscript
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&#34;, line 1233, in _runscript
     self.run(statement)
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&quot;, line 400, in run
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&#34;, line 400, in run
     exec cmd in globals, locals
-  File &quot;&lt;string&gt;&quot;, line 1, in &lt;module&gt;
-  File &quot;scripts/test_socket.py&quot;, line 8, in &lt;module&gt;
+  File &#34;&lt;string&gt;&#34;, line 1, in &lt;module&gt;
+  File &#34;scripts/test_socket.py&#34;, line 8, in &lt;module&gt;
     line = s.recv(4096)
 error: [Errno 60] Operation timed out
 </code></pre><p>如果是TCP协议栈写满后，会阻塞在sendall出，然后抛出Broken pipe:</p>
-<pre><code>(Pdb) c
--&gt; s.sendall(&quot;*&quot;*406000)
+<pre tabindex="0"><code>(Pdb) c
+-&gt; s.sendall(&#34;*&#34;*406000)
 (Pdb) c
 Traceback (most recent call last):
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1314, in main
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&#34;, line 1314, in main
     pdb._runscript(mainpyfile)
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&quot;, line 1233, in _runscript
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&#34;, line 1233, in _runscript
     self.run(statement)
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&quot;, line 400, in run
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/bdb.py&#34;, line 400, in run
     exec cmd in globals, locals
-  File &quot;&lt;string&gt;&quot;, line 1, in &lt;module&gt;
-  File &quot;scripts/test_socket.py&quot;, line 6, in &lt;module&gt;
-    s.sendall(&quot;*&quot;*406000)
-  File &quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/socket.py&quot;, line 228, in meth
+  File &#34;&lt;string&gt;&#34;, line 1, in &lt;module&gt;
+  File &#34;scripts/test_socket.py&#34;, line 6, in &lt;module&gt;
+    s.sendall(&#34;*&#34;*406000)
+  File &#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/socket.py&#34;, line 228, in meth
     return getattr(self._sock,name)(*args)
 error: [Errno 32] Broken pipe
 </code></pre><p>如果短暂断网后立马恢复，<code>sendall</code>函数执行前添加iptables，<code>sendall</code>后立马清掉规则（考验手速）。<br>
 抓包如下：
 <img src="/images/%E6%96%AD%E7%BD%91%E5%90%8E%E7%AB%8B%E9%A9%AC%E6%81%A2%E5%A4%8D.jpeg" alt="img">
 可以看到重传一定次数后，可恢复访问。如果时间短一般对业务没什么重大影响（网络抖动经常存在）。</p>
-<pre><code>-&gt; s.sendall(&quot;GET /404 HTTP/1.0\r\n\r\n&quot;)
+<pre tabindex="0"><code>-&gt; s.sendall(&#34;GET /404 HTTP/1.0\r\n\r\n&#34;)
 (Pdb) c
 HTTP/1.0 404 File not found
 

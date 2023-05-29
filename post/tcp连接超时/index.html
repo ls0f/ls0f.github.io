@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,16 +36,16 @@
       <time class="post-date" datetime="2021-02-03 00:00:00 UTC">03 Feb 2021</time>
     </header>
 
-    <h1 id="heading">背景</h1>
+    <h1 id="背景">背景</h1>
 <p>线上Nginx服务突然报错，日志打印Connection timed out</p>
-<h1 id="heading1">排查</h1>
+<h1 id="排查">排查</h1>
 <p>首先看一下完整日志</p>
-<pre><code>connect() failed (110: Connection timed out) while connecting to upstream ....
+<pre tabindex="0"><code>connect() failed (110: Connection timed out) while connecting to upstream ....
 </code></pre><p><strong>说明在三次握手阶段没有收到对方的SYN+ACK包</strong><br>
 用ping和curl确定网络没问题后，猜测是对方丢掉了SYN包</p>
 <h3 id="dmesg">dmesg</h3>
 <p>在目标服务机器上执行dmesg，有提示<code>Possible SYN flooding on port 7000</code>，正是程序监听端口， 说明TCP半连接队列已经满了。</p>
-<pre><code>root@admin:~# dmesg | tail
+<pre tabindex="0"><code>root@admin:~# dmesg | tail
 [22430720.630480] [20643]     0 20643    27755      158      14        0            -1 sleep
 [22430720.630489] Memory cgroup out of memory: Kill process 43283 (git) score 558 or sacrifice child
 [22430720.630769] Killed process 42232 (git) total-vm:10054400kB, anon-rss:9657832kB, file-rss:1268kB
@@ -58,11 +58,11 @@
 [35738682.087444] NOHZ: local_softirq_pending 200
 </code></pre><h3 id="netstat">netstat</h3>
 <p>执行命令<code>watch -n 1 &quot;netstat -s  | grep LISTEN&quot;</code>，被丢弃的SYN包一直在增加，说明发生了丢包</p>
-<pre><code>3161232 SYNs to LISTEN sockets dropped
+<pre tabindex="0"><code>3161232 SYNs to LISTEN sockets dropped
 </code></pre><p>用TcpExtListenOverflows和TcpExtListenDrops指标更直观</p>
-<pre><code>nstat -az | grep -E 'TcpExtListenOverflows|TcpExtListenDrops'
+<pre tabindex="0"><code>nstat -az | grep -E &#39;TcpExtListenOverflows|TcpExtListenDrops&#39;
 </code></pre><p>什么情况会发生SYN丢包？</p>
-<h3 id="tcp">TCP连接队列</h3>
+<h3 id="tcp连接队列">TCP连接队列</h3>
 <p>Linux2.2之后，TCP有两个连接队列</p>
 <p><img src="https://blog.cloudflare.com/content/images/2018/01/all-1.jpeg" alt="img"></p>
 <ul>
@@ -97,14 +97,14 @@
 <li>Accept Queue满并且qlen_young&gt;1</li>
 </ul>
 <p>服务器上开启了syncookie，说明是Accept Queue满造成的。</p>
-<pre><code>root@admin:~# sysctl net.ipv4.tcp_syncookies
+<pre tabindex="0"><code>root@admin:~# sysctl net.ipv4.tcp_syncookies
 net.ipv4.tcp_syncookies = 1
 </code></pre><p>查看进程的队列情况：（Send-Q表示Accept Queue的大小，Recv-Q 表示其实际大小）</p>
-<pre><code>ss -plnt sport = :7000|cat
+<pre tabindex="0"><code>ss -plnt sport = :7000|cat
 State      Recv-Q Send-Q Local Address:Port               Peer Address:Port              
 LISTEN     129      128          *:7000                     *:*              
 </code></pre><p>可以看见Accept Queue已经满了。</p>
-<h3 id="heading2">为什么突然报错</h3>
+<h3 id="为什么突然报错">为什么突然报错</h3>
 <p>看Nginx日志，有比较大的并发请求，后端是多进程同步IO模型，请求处理不过来，造成连接积压Accept Queue满。</p>
 <p><strong>后端服务也须关注SYN丢包情况</strong></p>
 <h1 id="ref">Ref</h1>

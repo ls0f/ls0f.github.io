@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -37,38 +37,37 @@
     </header>
 
     <p>当用Go发送一个Get请求的时候，会写类似下面的代码：</p>
-<pre><code>res, err := http.Get(&quot;http://mirrors.tencent.com&quot;)
+<pre tabindex="0"><code>res, err := http.Get(&#34;http://mirrors.tencent.com&#34;)
 if err != nil {
 	return err
 }
 defer res.Body.Close()
 ...
 </code></pre><p>写一个程序去验证下如果不对res.Body进行Close会发送什么。</p>
-<pre><code>package main
+<pre tabindex="0"><code>package main
 
 import (
-	&quot;io&quot;
-	&quot;io/ioutil&quot;
-	&quot;net/http&quot;
-	&quot;os&quot;
+	&#34;io&#34;
+	&#34;io/ioutil&#34;
+	&#34;net/http&#34;
+	&#34;os&#34;
 )
 func req() {
-	res, err := http.Get(&quot;http://mirrors.tencent.com&quot;)
+	res, err := http.Get(&#34;http://mirrors.tencent.com&#34;)
 	if err != nil {
 		panic(err)
 	}
 	println(res.StatusCode)
 }
 func main()  {
-	println(&quot;pid:&quot;, os.Getpid())
+	println(&#34;pid:&#34;, os.Getpid())
 	for i:=0;i&lt;10;i++{
 		req()
 	}
 	io.CopyN(ioutil.Discard, os.Stdin, 1)
 }
-
 </code></pre><p>go run，然后通过lsof去看下进程打来了10个http连接：</p>
-<pre><code>⇒  lsof -p 20440 | grep http
+<pre tabindex="0"><code>⇒  lsof -p 20440 | grep http
 test    20440 zhuo    6u     IPv4 0xd577b7664ae774b      0t0      TCP x.x.x.x:52444-&gt;mirrors.tencent.com:http (ESTABLISHED)
 test    20440 zhuo    8u     IPv4 0xd577b7664ab70cb      0t0      TCP x.x.x.x:52445-&gt;mirrors.tencent.com:http (ESTABLISHED)
 test    20440 zhuo    9u     IPv4 0xd577b765d38144b      0t0      TCP x.x.x.x:52446-&gt;mirrors.tencent.com:http (ESTABLISHED)
@@ -82,7 +81,7 @@ test    20440 zhuo   16u     IPv4 0xd577b764f2910cb      0t0      TCP x.x.x.x:52
 </code></pre><p>从代码上看看究竟是怎么回事，http请求的发送和接收相关代码在这里，包括连接建立、连接池等 <a href="https://github.com/golang/go/blob/master/src/net/http/transport.go">https://github.com/golang/go/blob/master/src/net/http/transport.go</a></p>
 <p>http连接封装成了<a href="https://github.com/golang/go/blob/cdf3db5df6bdb68f696fb15cc657207efcf778ef/src/net/http/transport.go#L1728"><code>struct persistConn</code></a>，
 看下http连接是如何建立的 <a href="https://github.com/golang/go/blob/cdf3db5df6bdb68f696fb15cc657207efcf778ef/src/net/http/transport.go#L1467">https://github.com/golang/go/blob/cdf3db5df6bdb68f696fb15cc657207efcf778ef/src/net/http/transport.go#L1467</a></p>
-<pre><code>func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (pconn *persistConn, err error) {
+<pre tabindex="0"><code>func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (pconn *persistConn, err error) {
 ....
 	pconn.br = bufio.NewReaderSize(pconn, t.readBufferSize())
 	pconn.bw = bufio.NewWriterSize(persistConnWriter{pconn}, t.writeBufferSize())
@@ -92,7 +91,7 @@ test    20440 zhuo   16u     IPv4 0xd577b764f2910cb      0t0      TCP x.x.x.x:52
 }
 </code></pre><p>重点看下realLoop，是一个死循环，只要连接可用一直不会退出。
 <a href="https://github.com/golang/go/blob/cdf3db5df6bdb68f696fb15cc657207efcf778ef/src/net/http/transport.go#L1903">https://github.com/golang/go/blob/cdf3db5df6bdb68f696fb15cc657207efcf778ef/src/net/http/transport.go#L1903</a></p>
-<pre><code>    ...
+<pre tabindex="0"><code>    ...
 	alive := true
 	for alive {
 		...
@@ -156,7 +155,7 @@ Caller should close resp.Body when done reading from it.</p>
 <li>如果读完了所有Body，可以不调用Close，连接也会被复用</li>
 </ul>
 <p>所以最佳实践是：http请求发出后，如果没有错误，马上声明<code>defer res.Body.Close()</code>，避免资源泄露，然后尽量读完Body，好让连接复用。</p>
-<pre><code>res, err := http.Get(&quot;http://mirrors.tencent.com&quot;)
+<pre tabindex="0"><code>res, err := http.Get(&#34;http://mirrors.tencent.com&#34;)
 if err != nil {
 	return
 }
@@ -166,7 +165,6 @@ defer res.Body.Close() // 避免资源泄露
 io.Copy(ioutil.Discard, res.Body)
 */
 ...
-
 </code></pre>
 
   </article>

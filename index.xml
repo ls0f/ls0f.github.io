@@ -6,10 +6,33 @@
     <description>Recent content on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 16 Jul 2021 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="https://ls0f.github.io/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Sat, 08 Apr 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://ls0f.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>ChatGPT代理</title>
+      <link>https://ls0f.github.io/post/chatgpt%E4%BB%A3%E7%90%86/</link>
+      <pubDate>Sat, 08 Apr 2023 00:00:00 +0000</pubDate>
+      
+      <guid>https://ls0f.github.io/post/chatgpt%E4%BB%A3%E7%90%86/</guid>
+      <description> 如果访问ChatGPT出现类似错误，说明你的IP已经被封禁限制访问了：）
+Access denied
+You do not have access to chat.openai.com
+The site owner may have set restrictions that prevent you from accessing the site.
+在得知亲爹微软的Azure 的出口IP好用后，我拿出之前薅heroku羊毛的FQ方案来薅一下Azure =_=
+前提 已经有Chat OpenAI账号（sms-activate 收验证码） 拥有Azure账号并绑定了信用卡（国内VISA即可） 玩得转SwitchyOmega（很简单的） 创建容器 进入Azure免费服务页面 选择容器应用（有免费额度），创建容器 需新建资源组和选择区域、新建容器应用环境 设置容器应用信息（很重要，不要设置错）
+镜像选择：ls0f/cracker-server
+环境变量SECRET 自己设置，在下一步很会用上
+创建资源，等待容器部署完成后跳转到资源页面 拿到分配的访问地址，浏览器请求测试，正常会返回404页面，这个地址在下一步会用上
+走到这一步，你已经成功了80%
+本地代理 去Github下载客户端 本地终端中，运行客户端程序
+-addr 本地监听端口
+-raddr 容器访问地址（Azure分配的访问地址）
+-secret 秘钥（创建容器的时候设置的）
+示例
+./local -addr 127.0.0.1:1234 -raddr https://chatgpt.jollybush-7290e711.westus2.azurecontainerapps.io/ -secret chatgpt12345 -logtostderr -v=10 SwitchyOmega 新增代理配置 我的配置可供参考
+配置为上面命令行设置的监听端口
+设置OpenAI域名走代理
+Haaaaappy Chat </description>
+    </item>
     
     <item>
       <title>CLB串流导致TCP连接超时</title>
@@ -64,13 +87,13 @@ root@admin:~# dmesg | tail [22430720.630480] [20643] 0 20643 27755 158 14 0 -1 s
       
       <guid>https://ls0f.github.io/post/docker%E4%BB%93%E5%BA%93%E4%BC%98%E5%8C%96/</guid>
       <description>自19年底上线docker仓库服务，很长一段时间服务都比较稳定，但随着业务上量，有些问题开始出现&amp;hellip;
- 最初架构 最初docker仓库是定位于开发测试用，得易于我们的接入TGW VIP在各个网络专区基本都能连通，很快吸引了一大批用户把镜像上传到我们这里。
+最初架构 最初docker仓库是定位于开发测试用，得易于我们的接入TGW VIP在各个网络专区基本都能连通，很快吸引了一大批用户把镜像上传到我们这里。
 作为一个公司级的源服务，不少业务直接将镜像应用到了生产环境。 随着业务容器化上云的趋势越来越强，k8s集群的量和规模都越来越大，对镜像仓库造成了不少压力。6月份因为请求突增，问题开始出现，主要是docker仓库存储ceph上面遇到的两个问题：
- ceph rgw接入机器网卡打满 并发量高ceph rgw处理线程满  因为nginx接入层机器比ceph rgw接入机器数量多，提供的带宽能力是不等的。rgw是多线程同步阻塞IO模型，一个请求会占用一个处理线程，镜像因为体积大处理耗时多，在并发量高的时候处理线程会被占满，新请求得不到aceept超时。
+ceph rgw接入机器网卡打满 并发量高ceph rgw处理线程满 因为nginx接入层机器比ceph rgw接入机器数量多，提供的带宽能力是不等的。rgw是多线程同步阻塞IO模型，一个请求会占用一个处理线程，镜像因为体积大处理耗时多，在并发量高的时候处理线程会被占满，新请求得不到aceept超时。
 接入层缓存 除了给ceph rgw扩容外，我们紧急在接入层上线了docker proxy组件。 此组件的主要功能是代理镜像下载请求:
- 如果本地无缓存，回源到ceph拉一份，否则直接从本地返回 如果并发下载同一个镜像且本地没有缓存，proxy会在本地hold住所有请求，只回源一次，避免对ceph造成冲击  docker proxy上线后，极大缓解了ceph的压力。回源请求数和流量约1%。 主站流控 &amp;amp; 多地域就近接入 上线docker proxy后，虽然ceph的流量已经没什么压力，但是我们自身接入层nginx的流量却很容易被打满。
+如果本地无缓存，回源到ceph拉一份，否则直接从本地返回 如果并发下载同一个镜像且本地没有缓存，proxy会在本地hold住所有请求，只回源一次，避免对ceph造成冲击 docker proxy上线后，极大缓解了ceph的压力。回源请求数和流量约1%。 主站流控 &amp;amp; 多地域就近接入 上线docker proxy后，虽然ceph的流量已经没什么压力，但是我们自身接入层nginx的流量却很容易被打满。
 可能解决办法有：
- 扩容接入层Nginx缓解问题，但是TGW VIP本身也是有带宽上限，盲目扩容势必会给VIP带来压力，影响链路质量 增加TGW VIP，缺点是要去重新申请打通网络策略  不管是扩容Nginx，还是增加TGW VIP，我们接入这一套都要去完整部署一次，相对比较麻烦一些，我们采用了主站流控+多地域就近接入方案。 为了避免业务k8s集群扩容对软件源主站造成影响，我们在主站对单个docker仓库命名空间以及系统全局的拉取流量进行控制，避免docker的大流量对其他源造成影响。
+扩容接入层Nginx缓解问题，但是TGW VIP本身也是有带宽上限，盲目扩容势必会给VIP带来压力，影响链路质量 增加TGW VIP，缺点是要去重新申请打通网络策略 不管是扩容Nginx，还是增加TGW VIP，我们接入这一套都要去完整部署一次，相对比较麻烦一些，我们采用了主站流控+多地域就近接入方案。 为了避免业务k8s集群扩容对软件源主站造成影响，我们在主站对单个docker仓库命名空间以及系统全局的拉取流量进行控制，避免docker的大流量对其他源造成影响。
 另外k8s集群基本部署在自研或者云机房，和我们接入服务器是可以直连的，流量可避免再通过VIP中转一次。因此我们在华南、华东、西南、华北主要地域部署docker proxy组件，针对有大流量下载的命名空间开启就近接入。主站接入层根据拉取机器的地域将请求重定向给最近的docker proxy节点去处理，这样既避免了主站的流量压力又提高了下载速度。
 某业务扩容期间，华南接入点流量情况（万兆机器）: 最后 这种大流量的场景，计成本的中心式服务始终会存在瓶颈，P2P或许才是最好的方案，但这个涉及到客户端改造，又是另外一个问题了&amp;hellip;</description>
     </item>
@@ -83,7 +106,7 @@ root@admin:~# dmesg | tail [22430720.630480] [20643] 0 20643 27755 158 14 0 -1 s
       <guid>https://ls0f.github.io/post/%E8%A2%AB%E5%BF%BD%E8%A7%86%E7%9A%84alarm%E5%92%8Cpause/</guid>
       <description>在软件工具和生态越来越复杂的今天，我们往往容易忽视一些内核提供的非常有用的函数。
 Alarm和Pause就是其中之列。
- Alarm 有时候我们需要给程序加运行时间控制，很多人会用ps来检测或者用timeout命令来运行。
+Alarm 有时候我们需要给程序加运行时间控制，很多人会用ps来检测或者用timeout命令来运行。
 Alarm函数也适合干这个事情。
 import signal signal.alarm(1) while 1: pass 上面调用alarm(1)，表示要内核会在1s后给程序发SIGALARM信号，此信号的默认行为是终止程序，当然
 我们可以捕获信号做更多事情。alram精度是秒，但已经满足我们大部分需求了。
@@ -100,13 +123,13 @@ Pause</description>
       <guid>https://ls0f.github.io/post/go%E4%BB%A3%E7%90%8610s%E8%B6%85%E6%97%B6/</guid>
       <description>背景 机器通过代理去请求，请求会触发超时，稳定在10S多一点。
 分析 几个现象：
- 不通过代理机器访问没问题 代理机器直接访问也没有问题 只有通过代理访问才会触发10S超时  首先，抓个包看下：
+不通过代理机器访问没问题 代理机器直接访问也没有问题 只有通过代理访问才会触发10S超时 首先，抓个包看下：
 抓包能看出：
- 客户端和代理服务器握手和第一个connect请求都没问题 代理服务器在和目标机器建立连接的时候就花了10S，然后才响应connect请求 后面的数据包交互很快  猜测是代理机器的问题，但是在代理机器用curl去访问目标机器也没问题，难道是代理程序问题？
+客户端和代理服务器握手和第一个connect请求都没问题 代理服务器在和目标机器建立连接的时候就花了10S，然后才响应connect请求 后面的数据包交互很快 猜测是代理机器的问题，但是在代理机器用curl去访问目标机器也没问题，难道是代理程序问题？
 想到之前有看到过一篇文章，go dns触发超时，难道是DNS问题？
 为了快速解决验证问题，马上将DNS换成网管提供的最新IP，发现超时问题确实解决了。
 来看看Go是怎么解析DNS，为什么超时是10S。
-func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) { order := systemConf().hostLookupOrder(r, host) if !r.preferGo() &amp;amp;&amp;amp; order == hostLookupCgo { if addrs, err, ok := cgoLookupHost(ctx, host); ok { return addrs, err } // cgo not available (or netgo); fall back to Go&#39;s DNS resolver order = hostLookupFilesDNS } return r.</description>
+func (r *Resolver) lookupHost(ctx context.Context, host string) (addrs []string, err error) { order := systemConf().hostLookupOrder(r, host) if !r.preferGo() &amp;amp;&amp;amp; order == hostLookupCgo { if addrs, err, ok := cgoLookupHost(ctx, host); ok { return addrs, err } // cgo not available (or netgo); fall back to Go&amp;#39;s DNS resolver order = hostLookupFilesDNS } return r.</description>
     </item>
     
     <item>
@@ -126,7 +149,7 @@ httputil: ReverseProxy read error during body copy: unexpected EOF 说明我方�
 为了简化问题，我直接访问被调方Nginx，然后限速下载，问题重现了：
 在机器上抓包，发现确实是对方Nginx关闭了连接。
 对方Nginx的errlog里面看到下面日志：
-2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&amp;quot; 说明是Tomcat关掉了连接。
+2020/03/16 19:50:31 [error] 20256#20256: *697535933 upstream prematurely closed connection while reading upstream, client: x.x.x.x, server: xxx.com&amp;#34; 说明是Tomcat关掉了连接。
 至此问题有点卡主了，为什么Tomcat会关闭掉连接呢？
 因为没有对方机器权限，调试看日志抓包比来比较麻烦，问题暂且搁置了。
 这个问题一直搁置在脑袋里面回想，突然意识到为什么不是我方Nginx断掉连接呢？
@@ -134,7 +157,7 @@ httputil: ReverseProxy read error during body copy: unexpected EOF 说明我方�
 猜测对方Nginx应该没有这个配置，在慢网络下载中，对方Nginx从Tomcat后端下载很快，所以Nginx会很快将缓存文件写满，之后Nginx不再去Tomcat读，Tomcat将socket缓冲区写满后，就会触发写超时（默认60s），关闭连接。
 向对方确认，确实配置了proxy_max_temp_file_size 128m，用curl限速2M去下载，只能下载135M左右是能解释通的。
 用相关关键词搜索了下有一个关于这个case的ticket（见参考链接）：
- The 1GB limit suggests that the problem is due to ​proxy_max_temp_file_size. It is one gigabyte by default, and if the limit is reached, nginx will stop reading from the backend till all disk-buffered data are sent to the client.</description>
+The 1GB limit suggests that the problem is due to ​proxy_max_temp_file_size. It is one gigabyte by default, and if the limit is reached, nginx will stop reading from the backend till all disk-buffered data are sent to the client.</description>
     </item>
     
     <item>
@@ -144,10 +167,10 @@ httputil: ReverseProxy read error during body copy: unexpected EOF 说明我方�
       
       <guid>https://ls0f.github.io/post/tcp-buffer/</guid>
       <description>看tcp socket buffer size：
- /proc/sys/net/ipv4/tcp_rmem (for read) /proc/sys/net/ipv4/tcp_wmem (for write)  [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_rmem 4096 87380 6291456 [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_wmem 4096 16384 4194304 三个数字分别表示最小、默认、最大的内存限制。
+/proc/sys/net/ipv4/tcp_rmem (for read) /proc/sys/net/ipv4/tcp_wmem (for write) [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_rmem 4096 87380 6291456 [root@VM_137_43_centos ~]# cat /proc/sys/net/ipv4/tcp_wmem 4096 16384 4194304 三个数字分别表示最小、默认、最大的内存限制。
 简单验证下tcp write buffer到底有多大。
 客户端：
-import socket import sys import os import errno import time s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.setblocking(0) buf = &amp;quot;*&amp;quot; * 1024 cnt = 0 while True: try: n = s.send(buf) cnt += n sys.stdout.write(&amp;quot;\r send %s bytes, total:%s&amp;quot; % (n, cnt)) sys.</description>
+import socket import sys import os import errno import time s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.setblocking(0) buf = &amp;#34;*&amp;#34; * 1024 cnt = 0 while True: try: n = s.send(buf) cnt += n sys.stdout.write(&amp;#34;\r send %s bytes, total:%s&amp;#34; % (n, cnt)) sys.</description>
     </item>
     
     <item>
@@ -160,7 +183,7 @@ import socket import sys import os import errno import time s = socket.socket(so
 首先看一下三次握手的流程：
 客户端在发送第三个ACK后，已经进入了establish状态，如果这个ACK在网络中丢失了，此时服务端还处于syn-received状态。
 分两种情况：
- 客户端连接建立后，不发送数据 客户端连接建立后，立马发送数据  为了模拟第三个ACK丢失的情况，我在本地运行了python -m SimpleHTTPServer监听8000端口。
+客户端连接建立后，不发送数据 客户端连接建立后，立马发送数据 为了模拟第三个ACK丢失的情况，我在本地运行了python -m SimpleHTTPServer监听8000端口。
 利用iptables来模拟ACK丢包
 # 清掉iptables规则 iptables -F # PSH包需要放行 iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags PSH PSH -j ACCEPT iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags ACK ACK -j DROP 用telnet来连接服务端，但是不发送数据： 抓包可以看到，ACK丢失触发了服务端的SYN/ACK重传。（为了防止SYN flood攻击，有些网站关闭了SYN/ACK重传，比如baidu）
 用curl来请求服务器： 图片可以看到，握手的第三个ACK包虽然丢了，但是接下来的一个数据包设置了ACK位，服务端还是能握手成功，并且正常响应curl请求。
@@ -176,14 +199,14 @@ iptables -F iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 8000 --tcp-flags RST 
       
       <guid>https://ls0f.github.io/post/%E7%94%B5%E8%84%91%E7%9A%84%E7%BD%91%E7%BA%BF%E7%AA%81%E7%84%B6%E6%96%AD%E6%8E%89%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88/</guid>
       <description>问题：电脑突然断网会发送什么？
- 首先问题的前提是电脑和外部有进行连接，讨论已经建立的连接才有意义。
+首先问题的前提是电脑和外部有进行连接，讨论已经建立的连接才有意义。
 新建连接看断网时间长短决定握手成功与否。
 写个简单的发包程序，为了便于单步调试，直接用python：
-import socket import sys s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.sendall(&amp;quot;GET /404 HTTP/1.0\r\n\r\n&amp;quot;) while True: line = s.recv(4096) if line: print line else: break s.close() 直接pdb模式运行：python -m pdb scripts/test_socket.py xx 8000。
+import socket import sys s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) s.connect((sys.argv[1] , int(sys.argv[2]))) s.sendall(&amp;#34;GET /404 HTTP/1.0\r\n\r\n&amp;#34;) while True: line = s.recv(4096) if line: print line else: break s.close() 直接pdb模式运行：python -m pdb scripts/test_socket.py xx 8000。
 目标机器运行python -m SimpleHTTPServer监听8000端口。
 当connect成功后，在目标机器上利用iptables模拟断网：
 iptables -A INPUT -p tcp --dport 8000 -j DROP sendall函数将数据写入tcp协议栈缓冲区后，卡在recv函数，本地抓包： 重传一定次数后，会发送RST给目标机器断掉连接，recv函数抛出timeout错误：
--&amp;gt; s.sendall(&amp;quot;GET /404 HTTP/1.0\r\n\r\n&amp;quot;) (Pdb) c Traceback (most recent call last): File &amp;quot;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&amp;quot;, line 1314, in main pdb.</description>
+-&amp;gt; s.sendall(&amp;#34;GET /404 HTTP/1.0\r\n\r\n&amp;#34;) (Pdb) c Traceback (most recent call last): File &amp;#34;/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/pdb.py&amp;#34;, line 1314, in main pdb._runscript(mainpyfile) File &amp;#34;/System/Library/Frameworks/Python.</description>
     </item>
     
     <item>
@@ -209,8 +232,8 @@ type wrapResponse struct { res *http.Response err error } func NewMultiRoundTrip
       
       <guid>https://ls0f.github.io/post/go-http-response-body-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%85%B3%E9%97%AD/</guid>
       <description>当用Go发送一个Get请求的时候，会写类似下面的代码：
-res, err := http.Get(&amp;quot;http://mirrors.tencent.com&amp;quot;) if err != nil { return err } defer res.Body.Close() ... 写一个程序去验证下如果不对res.Body进行Close会发送什么。
-package main import ( &amp;quot;io&amp;quot; &amp;quot;io/ioutil&amp;quot; &amp;quot;net/http&amp;quot; &amp;quot;os&amp;quot; ) func req() { res, err := http.Get(&amp;quot;http://mirrors.tencent.com&amp;quot;) if err != nil { panic(err) } println(res.StatusCode) } func main() { println(&amp;quot;pid:&amp;quot;, os.Getpid()) for i:=0;i&amp;lt;10;i++{ req() } io.CopyN(ioutil.Discard, os.Stdin, 1) } go run，然后通过lsof去看下进程打来了10个http连接：
+res, err := http.Get(&amp;#34;http://mirrors.tencent.com&amp;#34;) if err != nil { return err } defer res.Body.Close() ... 写一个程序去验证下如果不对res.Body进行Close会发送什么。
+package main import ( &amp;#34;io&amp;#34; &amp;#34;io/ioutil&amp;#34; &amp;#34;net/http&amp;#34; &amp;#34;os&amp;#34; ) func req() { res, err := http.Get(&amp;#34;http://mirrors.tencent.com&amp;#34;) if err != nil { panic(err) } println(res.StatusCode) } func main() { println(&amp;#34;pid:&amp;#34;, os.Getpid()) for i:=0;i&amp;lt;10;i++{ req() } io.CopyN(ioutil.Discard, os.Stdin, 1) } go run，然后通过lsof去看下进程打来了10个http连接：
 ⇒ lsof -p 20440 | grep http test 20440 zhuo 6u IPv4 0xd577b7664ae774b 0t0 TCP x.</description>
     </item>
     
@@ -223,10 +246,10 @@ package main import ( &amp;quot;io&amp;quot; &amp;quot;io/ioutil&amp;quot; &amp;
       <description>线上Python后台服务出现了一些CLOSE_WAIT状态的TCP连接，看连接的dst ip，都是requests库发出的请求。
 首先要知道CLOSE_WAIT的状态的连接是因为对方已经关闭连接，我方还没有调用close关闭连接。 由于使用了reqeusts 的seesion，会有连接池，requests这么完善的http库，不太可能出现连接泄露的问题。
 于是大胆猜测：
- requests 不会主动去探测所有连接是否可用，当从连接池取出连接的时候，再去测试连接是否关闭，存在的CLOSE_WAIT的连接为正常现象， 当下一次连接被重用的时候，会被检测已断开然后再主动关闭。
- 看代码，requests的请求发送以及连接池其实是urllib3来提供的。
+requests 不会主动去探测所有连接是否可用，当从连接池取出连接的时候，再去测试连接是否关闭，存在的CLOSE_WAIT的连接为正常现象， 当下一次连接被重用的时候，会被检测已断开然后再主动关闭。
+看代码，requests的请求发送以及连接池其实是urllib3来提供的。
 首先看下如何从连接池获取可用连接的: https://github.com/urllib3/urllib3/blob/master/src/urllib3/connectionpool.py#L237
- def _get_conn(self, timeout=None): &amp;quot;&amp;quot;&amp;quot; Get a connection. Will return a pooled connection if one is available. If no connections are available and :prop:`.block` is ``False``, then a fresh connection is returned. :param timeout: Seconds to wait before giving up and raising :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and :prop:`.block` is ``True``. &amp;quot;&amp;quot;&amp;quot; conn = None try: conn = self.</description>
+def _get_conn(self, timeout=None): &amp;#34;&amp;#34;&amp;#34; Get a connection. Will return a pooled connection if one is available. If no connections are available and :prop:`.block` is ``False``, then a fresh connection is returned. :param timeout: Seconds to wait before giving up and raising :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and :prop:`.block` is ``True``. &amp;#34;&amp;#34;&amp;#34; conn = None try: conn = self.</description>
     </item>
     
     <item>
@@ -237,7 +260,7 @@ package main import ( &amp;quot;io&amp;quot; &amp;quot;io/ioutil&amp;quot; &amp;
       <guid>https://ls0f.github.io/post/%E4%B8%80%E6%AC%A1%E9%A6%96%E9%A1%B5%E4%BC%98%E5%8C%96/</guid>
       <description>网站的首页需要调用其他业务同学提供的接口，上线后发现调用这个接口会有一定的延迟，用户需要等待较长时间，于是我们想着怎么样最快的把首页呈现给用户。
 首页静态化 第一个冒入脑海的想法就是首页静态化，然而在前后端分离大行其道的今天，首页长这样(为了演示我format了一下)：
-&amp;lt;!DOCTYPE html&amp;gt; &amp;lt;html lang=en&amp;gt; &amp;lt;head&amp;gt; &amp;lt;meta charset=utf-8&amp;gt; &amp;lt;meta http-equiv=X-UA-Compatible content=&amp;quot;IE=edge,chrome=1&amp;quot;&amp;gt; &amp;lt;meta name=viewport content=&amp;quot;width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no&amp;quot;&amp;gt; &amp;lt;meta name=keywords content=&amp;quot;&amp;quot;&amp;gt; &amp;lt;meta name=description content=&amp;quot;&amp;quot;&amp;gt; &amp;lt;meta name=apple-mobile-web-app-capable content=yes&amp;gt; &amp;lt;meta name=apple-mobile-web-app-status-bar-style content=black&amp;gt; &amp;lt;meta name=format-detection content=&amp;quot;telephone=no,email=no&amp;quot;&amp;gt; &amp;lt;meta name=robots content=index,follow&amp;gt; &amp;lt;meta name=Description content=xxxxxx&amp;gt; &amp;lt;title&amp;gt;xxxxx&amp;lt;/title&amp;gt; &amp;lt;link rel=icon href=https://ls0f.github.io/static/logos.png&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-2486f8be.605228fd.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-358ee132.522eff97.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-6781e124.544bef60.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-68563222.b4c37bc3.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/app.238f510c.css rel=preload as=style&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/chunk-vendors.bac5cfc7.css rel=preload as=style&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/app.26753028.js rel=preload as=script&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-vendors.dfdeb870.js rel=preload as=script&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/chunk-vendors.</description>
+&amp;lt;!DOCTYPE html&amp;gt; &amp;lt;html lang=en&amp;gt; &amp;lt;head&amp;gt; &amp;lt;meta charset=utf-8&amp;gt; &amp;lt;meta http-equiv=X-UA-Compatible content=&amp;#34;IE=edge,chrome=1&amp;#34;&amp;gt; &amp;lt;meta name=viewport content=&amp;#34;width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no&amp;#34;&amp;gt; &amp;lt;meta name=keywords content=&amp;#34;&amp;#34;&amp;gt; &amp;lt;meta name=description content=&amp;#34;&amp;#34;&amp;gt; &amp;lt;meta name=apple-mobile-web-app-capable content=yes&amp;gt; &amp;lt;meta name=apple-mobile-web-app-status-bar-style content=black&amp;gt; &amp;lt;meta name=format-detection content=&amp;#34;telephone=no,email=no&amp;#34;&amp;gt; &amp;lt;meta name=robots content=index,follow&amp;gt; &amp;lt;meta name=Description content=xxxxxx&amp;gt; &amp;lt;title&amp;gt;xxxxx&amp;lt;/title&amp;gt; &amp;lt;link rel=icon href=https://ls0f.github.io/static/logos.png&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-2486f8be.605228fd.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-358ee132.522eff97.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-6781e124.544bef60.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-68563222.b4c37bc3.js rel=prefetch&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/app.238f510c.css rel=preload as=style&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/chunk-vendors.bac5cfc7.css rel=preload as=style&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/app.26753028.js rel=preload as=script&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/js/chunk-vendors.dfdeb870.js rel=preload as=script&amp;gt; &amp;lt;link href=https://ls0f.github.io/static/css/chunk-vendors.</description>
     </item>
     
     <item>
@@ -251,7 +274,7 @@ kafka保证每个topic的单partition内消息是有序的，producer追加写�
 一个典型的应用程序可能找下面这样：
 生产者往kafka写消息，消费者拉取消息后写入DB。这样一个应用程序如何实现exactly-once消息语义？
 你可能会想到两个问题：
- 因为网络问题，生产者没有收到kafka broker的ACK，生产者进行重试，但实际上可能两条消息都投递成功了。如果不重试，消息可能就丢了。At least once VS At most once 消费者从log读取消息，更新offset，然后插入DB。如果在更新完offset后，程序crash消息未插入DB，消息就丢了。换成先插入DB，再更新offset，也会有问题，插入DB后程序crash，offset未更新成功，程序重启后就会重复读取消息。又是At least once VS At most once  对于第一个问题，kafka给出了生产者幂等性的解决方案。
+因为网络问题，生产者没有收到kafka broker的ACK，生产者进行重试，但实际上可能两条消息都投递成功了。如果不重试，消息可能就丢了。At least once VS At most once 消费者从log读取消息，更新offset，然后插入DB。如果在更新完offset后，程序crash消息未插入DB，消息就丢了。换成先插入DB，再更新offset，也会有问题，插入DB后程序crash，offset未更新成功，程序重启后就会重复读取消息。又是At least once VS At most once 对于第一个问题，kafka给出了生产者幂等性的解决方案。
 对于第二个问题，在数学意义上来说没法实现exactly-once， 参考FLP和TWO-GENERAL。
 但在工程上面如何实现呢？其实第二个问题在传统单机程序或无状态服务上面我们也会经常碰到，最典型的就是重复插入问题，可简单通过唯一索引或主键来解决。
 解决消费者的exactly-once可以通过幂等性，如果每条消息都有唯一ID，可以通过唯一索引来解决。也可以将offset存储在同一个DB中，通过事务的方式去更新DB，这个看具体的业务场景了。
@@ -273,11 +296,11 @@ https://medium.com/@jaykreps/exactly-once-support-in-apache-kafka-55e1fdd0a35f h
 tasks: - name: start app shell: service.sh restart register: run - debug: msg=&amp;#34;{{ run.stdout_lines }}&amp;#34; server.sh脚本的内容可参考这个链接，主要命令是：
 sudo $cmd &amp;gt;&amp;gt; &amp;#34;$stdout_log&amp;#34; 2&amp;gt;&amp;gt; &amp;#34;$stderr_log&amp;#34; &amp;amp; 对Linux作业控制了解的同学可能会模糊的知道：当终端断开的时候，程序会收到SIGHUP信号。但诡异的是：手动连接机器执行restart命令，然后登出不会触发SIGHUP信号给后台进程，通过ansible却会。
 0X02 Linux进程 在进一步分析前，先回顾下Linux进程的基本知识。为了更容易理解和实现作业控制，Linux抽象了session和进程组（process group）。记住这几点就行
- session是进程组的集合 进程组是进程的集合 session leader是创建session的进程（setsid系统调用） 进程组leader是创建组的进程（setpgid系统系统） session只有一个前台进程组和若干个后台进程组  session可能有控制终端（control terminal），如/dev/ttyn、/dev/ptsn，常说的damon程序就没有。当session leader打开控制终端，同时就成为了终端的控制进程。
+session是进程组的集合 进程组是进程的集合 session leader是创建session的进程（setsid系统调用） 进程组leader是创建组的进程（setpgid系统系统） session只有一个前台进程组和若干个后台进程组 session可能有控制终端（control terminal），如/dev/ttyn、/dev/ptsn，常说的damon程序就没有。当session leader打开控制终端，同时就成为了终端的控制进程。
 0X03 SIGHUP 再梳理一下SIGHUP信号，什么时候程序会收到SIGHUP信号，是谁发送的信号。
 0x01 内核发送SIGHUP 当控制进程失去终端后，内核会发送一个SIGHUP信号给控制进程。失去终端有下面两种情形：
- 终端驱动感知连接关闭（物理终端） 直接关闭视窗、网络断掉（虚拟终端）  向控制进程发送SIGHUP信号会引起链式反应，这会导致SIGHUP信号发送给其他进程。可能会由下面两种方式处理：
- 当控制进程是shell时，在shell退出前，它会将SIGHUP信号发送给它创建的所有任务 内核会向该终端会话的前台进程组成员发送SIGHUP信号  写个简单的程序测试：
+终端驱动感知连接关闭（物理终端） 直接关闭视窗、网络断掉（虚拟终端） 向控制进程发送SIGHUP信号会引起链式反应，这会导致SIGHUP信号发送给其他进程。可能会由下面两种方式处理：
+当控制进程是shell时，在shell退出前，它会将SIGHUP信号发送给它创建的所有任务 内核会向该终端会话的前台进程组成员发送SIGHUP信号 写个简单的程序测试：
 import signal import os import time def handler(signum, frame): print &amp;#39;Signal handler called with signal&amp;#39;, signum print &amp;#34;pid:%s&amp;#34; % os.</description>
     </item>
     
@@ -289,7 +312,7 @@ import signal import os import time def handler(signum, frame): print &amp;#39;S
       <guid>https://ls0f.github.io/post/%E5%84%BF%E7%AB%A5%E7%9A%84%E4%BA%BA%E6%A0%BC%E6%95%99%E8%82%B2/</guid>
       <description>前言 普遍存在的自卑感激起个体的创造力，为追求人生的意义和优越感，个体便投入到追求完善、完美的过程之中。然而自卑感所激发的优越性追求也会走错方向。这些人会把追求优越性扭曲为追求权力、控制别人、自私自利，或沉溺于自我想象的世界之中，缺乏面对现实世界的勇气。这些错误的优越性追求，是应该要注意矫治的地方。父母或教师的任务就是把这种追求引向富有成就和有益的方向。教育者必须确保孩子对优越感的追求能给他们带来精神健康和幸福，而不是精神疾病和错乱。
 要点 阿德勒指出，儿童的教育要注意以下几个方面：
- 发展积极的自我观：教育者要给予孩子持续的信任，发展他的自信，过多的批评会造成怯懦和不自信；给予自由和机会，促进孩子自立，教育者过于展示优越感会滋生他的依赖心理；树立榜样，鼓励他自我要求，自我创造，阻止他沉溺于自我，裹足不前；鼓励他认可自己的性别和异性，不要显示或暗示拒斥自己的性别和异性。 发展积极的困难观：鼓励他努力克服障碍，提供适当的挑战，塑造他的勇气和自信，不要提出过高的要求，也不要提出过低的要求；允许和支持他创新尝试，不要把孩子视为被操纵的木偶；倡导和展示坚韧、恒心，做事追求完美，不要显示出没有耐心，或办事拖拉。 发展积极的他人观：鼓励他培养一种人类的关爱感，不要向孩子灌输偏见和冷漠；鼓励合作和与人共享的愿望，不要挑起恶性竞争；教会孩子理解和体察他人，不要培养他的自私和自我中心；帮助孩子对自己公平的份额满意，不要容忍贪婪和自私；展示和鼓励帮助他人，不要成为剥削者和暴君；展现自己乐于奉献，不要在孩子身上播种会使他成为一个索取的人的种子。 发展积极的异性观：发展孩子深刻地认可异性，不要通过言行来贬损异性；全面理解异性和与异性的亲近感，不要创造无知或距离；促进热情，信任和友善，不要播种敌意和不信任。  总结 人生而自卑，但都有提升超越的欲望。自卑和超越就如一杆天平，只有保持平衡，心理才会健康。当自卑走向了自卑情结，超越走向了野心膨胀就成为心理疾病。
+发展积极的自我观：教育者要给予孩子持续的信任，发展他的自信，过多的批评会造成怯懦和不自信；给予自由和机会，促进孩子自立，教育者过于展示优越感会滋生他的依赖心理；树立榜样，鼓励他自我要求，自我创造，阻止他沉溺于自我，裹足不前；鼓励他认可自己的性别和异性，不要显示或暗示拒斥自己的性别和异性。 发展积极的困难观：鼓励他努力克服障碍，提供适当的挑战，塑造他的勇气和自信，不要提出过高的要求，也不要提出过低的要求；允许和支持他创新尝试，不要把孩子视为被操纵的木偶；倡导和展示坚韧、恒心，做事追求完美，不要显示出没有耐心，或办事拖拉。 发展积极的他人观：鼓励他培养一种人类的关爱感，不要向孩子灌输偏见和冷漠；鼓励合作和与人共享的愿望，不要挑起恶性竞争；教会孩子理解和体察他人，不要培养他的自私和自我中心；帮助孩子对自己公平的份额满意，不要容忍贪婪和自私；展示和鼓励帮助他人，不要成为剥削者和暴君；展现自己乐于奉献，不要在孩子身上播种会使他成为一个索取的人的种子。 发展积极的异性观：发展孩子深刻地认可异性，不要通过言行来贬损异性；全面理解异性和与异性的亲近感，不要创造无知或距离；促进热情，信任和友善，不要播种敌意和不信任。 总结 人生而自卑，但都有提升超越的欲望。自卑和超越就如一杆天平，只有保持平衡，心理才会健康。当自卑走向了自卑情结，超越走向了野心膨胀就成为心理疾病。
 只有深入了解儿童的成长史，比如身体状况、家庭环境等，才能真正解读他某些行为如发怒、懒惰、厌学等背后的真正含义。然后要做到这一点，实属不易。作为父母只能敏锐观察、客观分析、自我提升。</description>
     </item>
     
@@ -301,7 +324,7 @@ import signal import os import time def handler(signum, frame): print &amp;#39;S
       <guid>https://ls0f.github.io/post/100w%E4%B8%AA%E6%96%87%E4%BB%B6%E5%AD%98%E6%94%BE1%E4%B8%AA%E7%9B%AE%E5%BD%95%E5%92%8C%E5%AD%98%E6%94%BE10%E4%B8%AA%E7%9B%AE%E5%BD%95/</guid>
       <description>最近突发奇想：100W个文件存放1个目录和平均存放在10个目录，哪种方式访问更快。
 要想回答这个问题，首先得明白Linux是怎么定位文件的。Linux文件系统作为一种树状接口，定位文件是一层一层向下查找的。
- A Linux filename has the same format as all Unix filenames have. It is a series of directory names separated by forward slashes (/) and ending in the file&#39;s name. One example filename would be /home/rusling/.cshrc where /home and /rusling are directory names and the file&#39;s name is .cshrc. Like all other Unix systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters.</description>
+A Linux filename has the same format as all Unix filenames have. It is a series of directory names separated by forward slashes (/) and ending in the file&amp;rsquo;s name. One example filename would be /home/rusling/.cshrc where /home and /rusling are directory names and the file&amp;rsquo;s name is .cshrc. Like all other Unix systems, Linux does not care about the format of the filename itself; it can be any length and consist of any of the printable characters.</description>
     </item>
     
   </channel>

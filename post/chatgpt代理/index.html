@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.111.3">
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="">
+  <meta property="og:url" content="https://ls0f.github.io/post/chatgpt%E4%BB%A3%E7%90%86/">
+
+  <title>ChatGPT代理 - </title>
+  <meta property="og:title" content="ChatGPT代理 - ">
+  <meta property="og:type" content="article">
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Arvo:400,700">
+  <link rel="stylesheet" href="/css/highlight.css">
+  <link rel="stylesheet" href="/css/journal.css">
+  <link href="/index.xml" rel="alternate" type="application/rss+xml" title="">
+
+</head>
+
+<body>
+  <div class="container">
+
+    <nav class="site-nav">
+      <a href="https://ls0f.github.io/">Index</a>
+    </nav>
+
+
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">ChatGPT代理</h1>
+      <time class="post-date" datetime="2023-04-08 00:00:00 UTC">08 Apr 2023</time>
+    </header>
+
+    <blockquote>
+<p>如果访问ChatGPT出现类似错误，说明你的IP已经被封禁限制访问了：）</p>
+</blockquote>
+<p><em>Access denied</em><br>
+You do not have access to chat.openai.com<br>
+The site owner may have set restrictions that prevent you from accessing the site.</p>
+<p><img src="/images/2023-05-29-09-42-28.png" alt=""></p>
+<p>在得知亲爹微软的Azure 的出口IP好用后，我拿出之前薅heroku羊毛的<a href="https://github.com/ls0f/cracker">FQ方案</a>来薅一下Azure =_=</p>
+<h1 id="前提">前提</h1>
+<ul>
+<li>已经有Chat OpenAI账号（sms-activate 收验证码）</li>
+<li>拥有Azure账号并绑定了信用卡（国内VISA即可）</li>
+<li>玩得转SwitchyOmega（很简单的）</li>
+</ul>
+<h1 id="创建容器">创建容器</h1>
+<ul>
+<li>
+<p><a href="https://portal.azure.com/#view/Microsoft_Azure_Billing/FreeServicesBlade">进入Azure免费服务</a>页面  选择容器应用（有免费额度），创建容器
+<img src="/images/2023-05-29-09-48-12.png" alt=""></p>
+</li>
+<li>
+<p>需新建资源组和选择区域、新建容器应用环境
+<img src="/images/2023-05-29-09-48-41.png" alt=""></p>
+</li>
+<li>
+<p>设置容器应用信息（很重要，不要设置错）</p>
+</li>
+</ul>
+<p>镜像选择：<code>ls0f/cracker-server</code><br>
+环境变量SECRET 自己设置，在下一步很会用上<br>
+<img src="/images/2023-05-29-09-49-40.png" alt="">
+<img src="/images/2023-05-29-09-49-52.png" alt=""></p>
+<ul>
+<li>创建资源，等待容器部署完成后跳转到资源页面</li>
+</ul>
+<p><img src="/images/2023-05-29-10-01-38.png" alt=""></p>
+<p>拿到分配的访问地址，浏览器请求测试，正常会返回404页面，这个地址在下一步会用上<br>
+<img src="/images/2023-05-29-09-50-15.png" alt=""></p>
+<p>走到这一步，你已经成功了80%</p>
+<h1 id="本地代理">本地代理</h1>
+<ul>
+<li>
+<p>去<a href="https://github.com/ls0f/cracker/releases">Github下载客户端</a>
+<img src="/images/2023-05-29-09-51-41.png" alt=""></p>
+</li>
+<li>
+<p>本地终端中，运行客户端程序</p>
+</li>
+</ul>
+<p>-addr 本地监听端口<br>
+-raddr 容器访问地址（Azure分配的访问地址）<br>
+-secret 秘钥（创建容器的时候设置的）</p>
+<p>示例</p>
+<pre tabindex="0"><code>./local -addr 127.0.0.1:1234 -raddr https://chatgpt.jollybush-7290e711.westus2.azurecontainerapps.io/  -secret chatgpt12345 -logtostderr -v=10
+</code></pre><p><img src="/images/2023-05-29-09-53-12.png" alt=""></p>
+<ul>
+<li>SwitchyOmega 新增代理配置</li>
+</ul>
+<p>我的配置可供参考</p>
+<p><img src="/images/2023-05-29-09-53-54.png" alt=""></p>
+<blockquote>
+<p>配置为上面命令行设置的监听端口</p>
+</blockquote>
+<p><img src="/images/2023-05-29-09-54-46.png" alt=""></p>
+<blockquote>
+<p>设置OpenAI域名走代理</p>
+</blockquote>
+<h1 id="haaaaappy-chat">Haaaaappy Chat</h1>
+<p><img src="/images/2023-05-29-09-55-48.png" alt=""></p>
+
+
+  </article>
+
+
+      <footer class="site-footer">
+        <span itemscope itemtype="http://schema.org/Person">
+          <link itemprop="url" href="https://ls0f.github.io/">
+          <span itemprop="name"></span>
+
+          <br>
+
+          <a itemprop="sameAs" href="https://github.com/ls0f" title="GitHub">GitHub</a>
+
+          
+
+          
+        </span>
+
+        
+      </footer>
+    </div>
+
+  <script src="/js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  </body>
+</html>
+

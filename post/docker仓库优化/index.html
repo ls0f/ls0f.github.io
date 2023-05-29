@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="generator" content="Hugo 0.60.1" />
+  <meta name="generator" content="Hugo 0.111.3">
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,7 +39,7 @@
     <blockquote>
 <p>自19年底上线docker仓库服务，很长一段时间服务都比较稳定，但随着业务上量，有些问题开始出现&hellip;</p>
 </blockquote>
-<h2 id="heading">最初架构</h2>
+<h2 id="最初架构">最初架构</h2>
 <p><img src="/images/docker1.jpeg" alt="img"></p>
 <p>最初docker仓库是定位于开发测试用，得易于我们的接入TGW VIP在各个网络专区基本都能连通，很快吸引了一大批用户把镜像上传到我们这里。</p>
 <p>作为一个公司级的源服务，不少业务直接将镜像应用到了生产环境。
@@ -49,7 +49,7 @@
 <li>并发量高ceph rgw处理线程满</li>
 </ul>
 <p>因为nginx接入层机器比ceph rgw接入机器数量多，提供的带宽能力是不等的。rgw是多线程同步阻塞IO模型，一个请求会占用一个处理线程，镜像因为体积大处理耗时多，在并发量高的时候处理线程会被占满，新请求得不到aceept超时。</p>
-<h2 id="heading1">接入层缓存</h2>
+<h2 id="接入层缓存">接入层缓存</h2>
 <p>除了给ceph rgw扩容外，我们紧急在接入层上线了docker proxy组件。
 此组件的主要功能是代理镜像下载请求:</p>
 <ul>
@@ -59,7 +59,7 @@
 <p><img src="/images/docker2.jpeg" alt="img"></p>
 <p>docker proxy上线后，极大缓解了ceph的压力。回源请求数和流量约1%。
 <img src="/images/docker_ceph_source.jpeg" alt="img"></p>
-<h2 id="--">主站流控 &amp; 多地域就近接入</h2>
+<h2 id="主站流控--多地域就近接入">主站流控 &amp; 多地域就近接入</h2>
 <p>上线docker proxy后，虽然ceph的流量已经没什么压力，但是我们自身接入层nginx的流量却很容易被打满。</p>
 <p>可能解决办法有：</p>
 <ul>
@@ -72,7 +72,7 @@
 <p>另外k8s集群基本部署在自研或者云机房，和我们接入服务器是可以直连的，流量可避免再通过VIP中转一次。因此我们在华南、华东、西南、华北主要地域部署docker proxy组件，针对有大流量下载的命名空间开启就近接入。主站接入层根据拉取机器的地域将请求重定向给最近的docker proxy节点去处理，这样既避免了主站的流量压力又提高了下载速度。</p>
 <p>某业务扩容期间，华南接入点流量情况（万兆机器）:
 <img src="/images/docker_proxy.jpeg" alt="img"></p>
-<h2 id="heading2">最后</h2>
+<h2 id="最后">最后</h2>
 <p>这种大流量的场景，计成本的中心式服务始终会存在瓶颈，P2P或许才是最好的方案，但这个涉及到客户端改造，又是另外一个问题了&hellip;</p>
 
 
